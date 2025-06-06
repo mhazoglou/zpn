@@ -32,7 +32,8 @@ pub const Session = struct {
     }
     
     fn append_to_history(self: *Session, str: []const u8) !void {
-        return self.history.append(str);
+        try self.history.appendSlice(str);
+        try self.history.appendSlice("\n");
     }
     
     fn op_binary(self: *Session, bin_closure: *const fn(num1: f64, num2: f64) f64) !void {
@@ -102,9 +103,13 @@ pub const Session = struct {
     }
 
     fn copy(self: *Session, num: u32) !void {
-        const last = self.stack.getLast();
-        for (0..num) |_| {
-            try self.append_to_stack(last);
+        if (self.stack.items.len >= 1) {
+            const last = self.stack.getLast();
+            for (0..num) |_| {
+                try self.append_to_stack(last);
+            }
+        } else {
+            std.debug.print("Cannot copy any elements the stack is empty.\n", .{});
         }
     }
 
@@ -127,9 +132,8 @@ pub const Session = struct {
 
         while (iter.next()) |tk| {
             if (!std.mem.eql(u8, tk[0..], "")) {
-                // self.push_to_history(tk);
+                try self.append_to_history(tk[0..]);
                 const token = Tokenizer(tk[0..]);
-                std.debug.print("{!}\n", .{token});
                 running = self.match_token(token);
                 if (!running) {
                     break;
@@ -151,6 +155,7 @@ pub const Session = struct {
             .Get => |num| self.get(num) catch unreachable,
             .ClearStack => self.clear_stack(),
             .Del => |num| self.del(num),
+            .PrintHistory => self.print_history(),
             .Quit => running = false,
             .Copy => |num| self.copy(num) catch unreachable,
             else => {std.debug.print("Skip\n", .{});},
@@ -159,7 +164,21 @@ pub const Session = struct {
     }
 
     pub fn print_stack(self: *Session) void {
-        std.debug.print("{any}\n", .{self.stack.items});
+        std.debug.print("{any}\n", .{self});
+    }
+
+    pub fn print_history(self: *Session) void {
+        std.debug.print("{s}\n", .{self.history.items});
+    }
+
+    pub fn format(self: *Session, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
+        _ = fmt;
+        _ = options;
+        try writer.print("Stack {{\n", .{});
+        for (self.stack.items) |n| {
+            try writer.print("    {d}\n", .{n});
+        }
+        try writer.print("}}\n", .{});
     }
 
 };

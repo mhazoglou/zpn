@@ -146,8 +146,8 @@ pub fn Tokenizer(str: []const u8) Token {
             .cubrt => return Token{ .OpUnary = cbrt },
             .exp => return Token{ .OpUnary = exp },
             .ln => return Token{ .OpUnary = ln },
-            // .log2 => return Token{ .OpUnary = *const fn },
-            // .log10 => return Token{ .OpUnary = *const fn },
+            .log2 => return Token{ .OpUnary = log2 },
+            .log10 => return Token{ .OpUnary = log10 },
             // .sin => return Token{ .OpUnary = *const fn },
             // .asin => return Token{ .OpUnary = *const fn },
             // .cos => return Token{ .OpUnary = *const fn },
@@ -178,7 +178,7 @@ pub fn Tokenizer(str: []const u8) Token {
             // .rm => return Token{ .OpUnary = *const fn },
             // .reset => return Token{ .OpUnary = *const fn },
             // .sess => return Token{ .OpUnary = *const fn },
-            // .hist => return Token{ .OpUnary = *const fn },
+            .hist => return Token.PrintHistory,
             // .hist_clear => return Token{ .OpUnary = *const fn },
             // .undo => return Token{ .OpUnary = *const fn },
             // .redo => return Token{ .OpUnary = *const fn },
@@ -222,5 +222,7 @@ fn cub(num: f64) f64 { return num * num * num; }
 fn cbrt(num: f64) f64 {return std.math.cbrt(num); }
 fn exp(num: f64) f64 { return std.math.exp(num); }
 fn ln(num: f64) f64 { return std.math.log(f64, std.math.e, num); }
+fn log2(num: f64) f64 { return std.math.log(f64, 2, num); }
+fn log10(num: f64) f64 { return std.math.log(f64, 10, num); }
 
 

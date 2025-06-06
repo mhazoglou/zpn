@@ -1,4 +1,5 @@
 const std = @import("std");
+const SessionManager = @import("SessionManager.zig").SessionManager;
 const Session = @import("session.zig").Session;
 const Token = @import("token.zig").Token;
 const Tokenizer = @import("token.zig").Tokenizer;
@@ -12,36 +13,37 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var sess = Session.init(allocator);
-    defer sess.deinit();
+//     var sess = Session.init(allocator);
+//     defer sess.deinit();
+// 
+//     var running = true;
+//     // Define stdin reader
+//     const stdin = std.io.getStdIn().reader();
+//     
+//     var buffer: [BUFFERSIZE]u8 = undefined;
+//     
+//     while (running) {
+//         sess.print_stack();
+//         @memset(buffer[0..], 0);
+// 
+//         _ = try stdin.readUntilDelimiterOrEof(buffer[0..], '\n');
+//         
+//         // I need to only use the appropriate length without the null characters
+//         var len_buffer: usize = 0;
+//         while (buffer[len_buffer] != 0) {
+//             len_buffer += 1;
+//         }
+// 
+//         const cmd_input = std.mem.asBytes(&buffer)[0..len_buffer];
+//         
+//         // print!("\nCurrent Session: {}", self.current_session.borrow());
+//         running = try sess.process_input(cmd_input);
+//     }
 
-    var running = true;
-    // Define stdin reader
-    const stdin = std.io.getStdIn().reader();
-    
-    var buffer: [BUFFERSIZE]u8 = undefined;
-    
-    while (running) {
-        sess.print_stack();
-        @memset(buffer[0..], 0);
 
-        _ = try stdin.readUntilDelimiterOrEof(buffer[0..], '\n');
-        
-        // I need to only use the appropriate length without the null characters
-        var len_buffer: usize = 0;
-        while (buffer[len_buffer] != 0) {
-            len_buffer += 1;
-        }
-
-        const cmd_input = std.mem.asBytes(&buffer)[0..len_buffer];
-        
-        // print!("\nCurrent Session: {}", self.current_session.borrow());
-        running = try sess.process_input(cmd_input);
-    }
-
-
-    // var manager = SessionManager.init(allocator);
-    // try manager.run_manager();
+    var manager = try SessionManager.init(allocator);
+    defer manager.deinit();
+    try manager.run_manager();
 }
 
 // fn read_input() []u8 {
