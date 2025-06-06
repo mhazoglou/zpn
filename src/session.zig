@@ -23,20 +23,20 @@ pub const Session = struct {
         self.history.deinit();
     }
     
-    fn append_to_stack(self: *Session, val: f64) !void {
+    pub fn append_to_stack(self: *Session, val: f64) !void {
         try self.stack.append(val);
     }
     
-    fn pop_from_stack(self: *Session) f64 {
+    pub fn pop_from_stack(self: *Session) f64 {
         return self.stack.pop().?;
     }
     
-    fn append_to_history(self: *Session, str: []const u8) !void {
+    pub fn append_to_history(self: *Session, str: []const u8) !void {
         try self.history.appendSlice(str);
         try self.history.appendSlice("\n");
     }
     
-    fn op_binary(self: *Session, bin_closure: *const fn(num1: f64, num2: f64) f64) !void {
+    pub fn op_binary(self: *Session, bin_closure: *const fn(num1: f64, num2: f64) f64) !void {
         if (self.stack.items.len > 1) {
             const y = self.pop_from_stack();
             const x = self.pop_from_stack();
@@ -48,7 +48,7 @@ pub const Session = struct {
         // self.update_states();
     }
     
-    fn op_unary(self: *Session, un_closure: *const fn(num: f64) f64) !void {
+    pub fn op_unary(self: *Session, un_closure: *const fn(num: f64) f64) !void {
         if (self.stack.items.len >= 1) {
             const x = self.pop_from_stack();
             try self.append_to_stack(un_closure(x));
@@ -59,7 +59,7 @@ pub const Session = struct {
         // self.update_states();
     }
 
-    fn swap(self: *Session) !void {
+    pub fn swap(self: *Session) !void {
         if (self.stack.items.len > 1) {
             const y = self.pop_from_stack();
             const x = self.pop_from_stack();
@@ -72,7 +72,7 @@ pub const Session = struct {
         // self.update_states();
     }
 
-    fn cyclic_permutation(self: *Session, num: i32) !void {
+    pub fn cyclic_permutation(self: *Session, num: i32) !void {
         if (self.stack.items.len > 1) {
             if (num >= 0) {
                 const count = @as(usize, @intCast(num));
@@ -90,7 +90,7 @@ pub const Session = struct {
         }
     }
 
-    fn del(self: *Session, num: u32) void {
+    pub fn del(self: *Session, num: u32) void {
         if (self.stack.items.len >= num) {
             for (0..num) |_| {
                 _ = self.pop_from_stack();
@@ -98,11 +98,11 @@ pub const Session = struct {
         }
     }
 
-    fn clear_stack(self: *Session) void {
+    pub fn clear_stack(self: *Session) void {
         self.stack.clearAndFree();
     }
 
-    fn copy(self: *Session, num: u32) !void {
+    pub fn copy(self: *Session, num: u32) !void {
         if (self.stack.items.len >= 1) {
             const last = self.stack.getLast();
             for (0..num) |_| {
@@ -113,7 +113,7 @@ pub const Session = struct {
         }
     }
 
-    fn get(self: *Session, num: usize) !void {
+    pub fn get(self: *Session, num: usize) !void {
         if (num < self.stack.items.len) {
             const item = self.stack.orderedRemove(num);
             try self.append_to_stack(item);
@@ -122,7 +122,7 @@ pub const Session = struct {
         }
     }
 
-    fn insert(self: *Session, num: usize, val: f64) !void {
+    pub fn insert(self: *Session, num: usize, val: f64) !void {
         try self.stack.insert(num, val);
     }
 

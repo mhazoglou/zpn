@@ -171,10 +171,10 @@ pub fn Tokenizer(str: []const u8) Token {
             .swap => return Token.Swap,
             .cyc => return handleOneNumber(i32, "CyclicPermutation", &iter),
             .cycle => return handleOneNumber(i32, "CyclicPermutation", &iter),
-            // .new => return Token{ .OpUnary = *const fn },
-            // .change_to => return Token{ .OpUnary = *const fn },
-            // .go_to => return Token{ .OpUnary = *const fn },
-            // .goto => return Token{ .OpUnary = *const fn },
+            .new => return handleOneStr("NewSession", &iter),
+            .change_to => return handleOneStr("ChangeSession", &iter), 
+            .go_to => return handleOneStr("ChangeSession", &iter),
+            .goto => return handleOneStr("ChangeSession", &iter),
             // .rm => return Token{ .OpUnary = *const fn },
             // .reset => return Token{ .OpUnary = *const fn },
             // .sess => return Token{ .OpUnary = *const fn },
@@ -206,6 +206,18 @@ fn handleOneNumber(comptime T: type, comptime field_name: []const u8,
         return @unionInit(Token, field_name, 1);
     }
 }
+
+fn handleOneStr(comptime field_name: []const u8, 
+    iter: *std.mem.SplitIterator(u8, .sequence)
+) Token {
+    const str_opt = iter.next();
+    if (str_opt) |val| {
+        return @unionInit(Token, field_name, val);
+    } else {
+        return  Token.Invalid;
+    }
+}
+
 
 fn add(num1: f64, num2: f64) f64 { return num1 + num2; }
 fn sub(num1: f64, num2: f64) f64 { return num1 - num2; }
