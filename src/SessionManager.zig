@@ -21,7 +21,7 @@ pub const SessionManager = struct {
         const name, const default = try self.make_new_session("default");
         
         
-        try self.map.put(name.*, default);
+        try self.map.put(name, default);
         return self;
     }
 
@@ -34,13 +34,15 @@ pub const SessionManager = struct {
         }
         self.map.deinit();
     }
-
-    fn make_new_session(self: *SessionManager, name: []const u8) !struct {*[]const u8, *Session} {
+    
+    // This method is to allocate memory for a new session and it's name
+    // it returns the value to make their lifetimes persist longer than the 
+    // scope they would be defined in
+    fn make_new_session(self: *SessionManager, name: []const u8) !struct {[]const u8, *Session} {
         const sess = try self.allocator.create(Session);
-        const sess_name = try self.allocator.create([]const u8);
+        const sess_name = try self.allocator.dupe(u8, name);
 
         sess.* = Session.init(self.allocator);
-        sess_name.* = name;
         return .{ sess_name, sess};
     }
     
@@ -75,10 +77,11 @@ pub const SessionManager = struct {
     fn process_input(self: *SessionManager, cmd_input: []u8) !bool {
         var running = true;
         var iter = std.mem.splitAny(u8, cmd_input, " \t\r\n");
+        const sess = self.map.get(self.current_session).?;
 
         while (iter.next()) |tk| {
             if (!std.mem.eql(u8, tk[0..], "")) {
-                //self.append_to_history(tk[0..]);
+                try sess.append_to_history(tk[0..]);
                 const token = Tokenizer(tk[0..]);
                 std.debug.print("Token is : {any}\n\n", .{token});
                 running = self.match_token(token);
@@ -121,15 +124,34 @@ pub const SessionManager = struct {
     fn add_new_session(self: *SessionManager, name: []const u8) !void {
         const sess_name, const new_sess = try self.make_new_session(name);
         
-        try self.map.put(sess_name.*, new_sess);
+        try self.map.put(sess_name, new_sess);
     }
 
     fn change_current_session(self: *SessionManager, name: []const u8) void {
-        const opt_sess = self.map.get(name);
-        if (opt_sess) |_| {
-            self.current_session = name[0..];
+        const opt_sess_key = self.map.getKey(name);
+        if (opt_sess_key) |key| {
+            self.current_session = key;
         } else {
             std.debug.print("Session name {s} does not exist. Create it with new:{s}\n\n", .{name, name});
+        }
+    }
+
+    fn print_session_names(self: *SessionManager) void {
+        var it = self.map.iterator();
+        std.debug.print("Sessions:\n", .{});
+        while (it.next()) |entry| {
+            std.debug.print("{s}\n", .{entry.key_ptr.*});
+        }
+        std.debug.print("\n", .{});
+    }
+
+    fn remove_session(self: *SessionManager, name: []const u8) void {
+        if (std.mem.eql(u8, name, "default")) {
+            std.debug.print("The default session cannot be deleted.\n\n", .{});
+        } else if (std.mem.eql(u8, name, self.current_session)) {
+            std.debug.print("The current session cannot be deleted.\n\n", .{});
+        } else {
+            _ = self.map.remove(name);
         }
     }
 };
