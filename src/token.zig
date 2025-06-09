@@ -11,7 +11,7 @@ pub const TokenType = enum {
     Swap,
     CyclicPermutation,
     Get,
-    // Insert,
+    Insert,
     Invalid,
     NewSession,
     RemoveSession,
@@ -36,7 +36,7 @@ pub const Token = union(TokenType) {
     Swap: void,
     CyclicPermutation: i32,
     Get: usize,
-    // Insert: .{.i32, .f64},
+    Insert: struct {usize, f64} ,// Inserter,
     Invalid: void,
     NewSession: []const u8,
     RemoveSession: []const u8,
@@ -130,7 +130,7 @@ pub fn Tokenizer(str: []const u8) Token {
     if (std.fmt.parseFloat(f64, str[0..])) |val| { 
         return Token{ .Number = val}; 
     } else |_| {
-        var iter = std.mem.splitSequence(u8, str[0..], ":");
+        var iter = std.mem.splitScalar(u8, str[0..], ':');
         //std.debug.print("{!}", .{@TypeOf(iter)});
         const case = std.meta.stringToEnum(Case, iter.first()) orelse Case.invalid;
         switch (case) {
@@ -191,7 +191,20 @@ pub fn Tokenizer(str: []const u8) Token {
             // .undo => return Token{ .OpUnary = *const fn },
             // .redo => return Token{ .OpUnary = *const fn },
             .get => return handleOneNumber(usize, "Get", &iter),
-            // .insert => return Token{ .OpUnary = *const fn },
+            // .insert => {
+            //     const str_opt = iter.next();
+            //     if (str_opt) |val| {
+            //         if (std.fmt.parseInt(usize, val, 10)) |num| {
+            //             const sec_str_opt = iter.next();
+            //             if (str_opt) |val2| {
+            //                 std.fmt.parseFloat(f64, val2);
+            //             } else {
+            //                 return Token.Invalid;
+            //             }
+            //                                 } 
+            //     } else { return Token.Invalid; }
+            //     return Token{ .Insert = .{0, 0.5} };
+            // },
             .copy => return handleOneNumber(u32, "Copy", &iter),
             .cpy =>  return handleOneNumber(u32, "Copy", &iter),
             .invalid => return Token.Invalid,
@@ -201,8 +214,14 @@ pub fn Tokenizer(str: []const u8) Token {
 }
 
 fn handleOneNumber(comptime T: type, comptime field_name: []const u8, 
-    iter: *std.mem.SplitIterator(u8, .sequence)
+    iter: *std.mem.SplitIterator(u8, .scalar)
 ) Token {
+    // var len: u32 = 0;
+    // while (iter.next()) |_| {
+    //     len += 1;
+    // }
+    // iter.reset(); _  = iter.first();
+    // std.debug.print("length: {}", .{len});
     const str_opt = iter.next();
     if (str_opt) |val| {
         if (std.fmt.parseInt(T, val, 10)) |num| { 
@@ -216,7 +235,7 @@ fn handleOneNumber(comptime T: type, comptime field_name: []const u8,
 }
 
 fn handleOneStr(comptime field_name: []const u8, 
-    iter: *std.mem.SplitIterator(u8, .sequence)
+    iter: *std.mem.SplitIterator(u8, .scalar)
 ) Token {
     const str_opt = iter.next();
     if (str_opt) |val| {
@@ -226,7 +245,7 @@ fn handleOneStr(comptime field_name: []const u8,
     }
 }
 
-fn switch_binary(iter: *std.mem.SplitIterator(u8, .sequence)) Token {
+fn switch_binary(iter: *std.mem.SplitIterator(u8, .scalar)) Token {
     const binary_case = std.meta.stringToEnum(
         Case, iter.next() orelse "invalid"
     ) orelse Case.invalid;
@@ -242,7 +261,7 @@ fn switch_binary(iter: *std.mem.SplitIterator(u8, .sequence)) Token {
     return token_binary;
 }
 
-fn switch_unary(iter: *std.mem.SplitIterator(u8, .sequence)) Token {
+fn switch_unary(iter: *std.mem.SplitIterator(u8, .scalar)) Token {
     const unary_case = std.meta.stringToEnum(
         Case, iter.next() orelse "invalid"
     ) orelse Case.invalid;
