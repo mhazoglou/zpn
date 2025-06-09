@@ -4,6 +4,7 @@ const Session = @import("session.zig").Session;
 const Token = @import("token.zig").Token;
 const Tokenizer = @import("token.zig").Tokenizer;
 
+// More than enough to kill anything that moves
 const BUFFERSIZE = 4096;
 
 pub const SessionManager = struct {
@@ -47,7 +48,7 @@ pub const SessionManager = struct {
     }
     
     pub fn run_manager(self: *SessionManager) !void {
-        // println!("Type \"exit\" or \"quit\" to quit");
+        std.debug.print("Type \"exit\" or \"quit\" to quit\n", .{});
         var running = true;
         // Define stdin reader
         const stdin = std.io.getStdIn().reader();
@@ -101,7 +102,9 @@ pub const SessionManager = struct {
         switch (token) {
             .Number => |num| sess.append_to_stack(num) catch unreachable,
             .OpBinary => |func| sess.op_binary(func) catch unreachable,
+            .Reduce => |func| sess.reduce(func) catch unreachable,
             .OpUnary => |func| sess.op_unary(func) catch unreachable,
+            .Map => |func| sess.map(func) catch unreachable,
             .Swap => sess.swap() catch unreachable,
             .CyclicPermutation => |num| sess.cyclic_permutation(num) catch unreachable,
             .Get => |num| sess.get(num) catch unreachable,
@@ -130,7 +133,10 @@ pub const SessionManager = struct {
         if (opt_sess_key) |key| {
             self.current_session = key;
         } else {
-            std.debug.print("Session name {s} does not exist. Create it with new:{s}\n\n", .{name, name});
+            std.debug.print(
+                "Session name {s} does not exist. Create it with new:{s}\n\n", 
+                .{name, name}
+            );
         }
     }
 

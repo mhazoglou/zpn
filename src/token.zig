@@ -3,7 +3,9 @@ const std = @import("std");
 pub const TokenType = enum {
     Number,
     OpBinary,
+    Reduce,
     OpUnary,
+    Map,
     Del,
     ClearStack,
     Swap,
@@ -26,7 +28,9 @@ pub const TokenType = enum {
 pub const Token = union(TokenType) {
     Number: f64,
     OpBinary: *const fn (num1: f64, num2: f64) f64,
+    Reduce: *const fn (num: f64, num: f64) f64,
     OpUnary: *const fn (num: f64) f64,
+    Map: *const fn (num: f64) f64,
     Del: u32,
     ClearStack: void,
     Swap: void,
@@ -47,6 +51,7 @@ pub const Token = union(TokenType) {
 };
 
 const Case = enum {
+    reduce,
     @"+", 
     @"-",
     @"*",
@@ -54,6 +59,7 @@ const Case = enum {
     // @"%",
     @"^",
     pow,
+    map,
     neg,
     inv,
     abs,
@@ -128,6 +134,7 @@ pub fn Tokenizer(str: []const u8) Token {
         //std.debug.print("{!}", .{@TypeOf(iter)});
         const case = std.meta.stringToEnum(Case, iter.first()) orelse Case.invalid;
         switch (case) {
+            .reduce => return switch_binary(&iter),
             .@"+" => return Token{ .OpBinary = add },
             .@"-" => return Token{ .OpBinary = sub },
             .@"*" => return Token{ .OpBinary = mul },
@@ -135,6 +142,7 @@ pub fn Tokenizer(str: []const u8) Token {
             .@"/" => return Token{ .OpBinary = div },
             .@"^" => return Token{ .OpBinary = pow },
             .pow => return Token{ .OpBinary = pow },
+            .map => return switch_unary(&iter), 
             .neg => return Token{ .OpUnary = neg },
             .inv => return Token{ .OpUnary = inv },
             .abs => return Token{ .OpUnary = abs },
@@ -148,16 +156,16 @@ pub fn Tokenizer(str: []const u8) Token {
             .ln => return Token{ .OpUnary = ln },
             .log2 => return Token{ .OpUnary = log2 },
             .log10 => return Token{ .OpUnary = log10 },
-            // .sin => return Token{ .OpUnary = *const fn },
-            // .asin => return Token{ .OpUnary = *const fn },
-            // .cos => return Token{ .OpUnary = *const fn },
-            // .acos => return Token{ .OpUnary = *const fn },
-            // .sinh => return Token{ .OpUnary = *const fn },
-            // .asinh => return Token{ .OpUnary = *const fn },
-            // .cosh => return Token{ .OpUnary = *const fn },
-            // .acosh => return Token{ .OpUnary = *const fn },
-            // .tanh => return Token{ .OpUnary = *const fn },
-            // .atanh => return Token{ .OpUnary = *const fn },
+            .sin => return Token{ .OpUnary = sin },
+            .asin => return Token{ .OpUnary = asin },
+            .cos => return Token{ .OpUnary = cos },
+            .acos => return Token{ .OpUnary = acos },
+            .sinh => return Token{ .OpUnary = sinh },
+            .asinh => return Token{ .OpUnary = asinh },
+            .cosh => return Token{ .OpUnary = cosh },
+            .acosh => return Token{ .OpUnary = acosh },
+            .tanh => return Token{ .OpUnary = tanh },
+            .atanh => return Token{ .OpUnary = atanh },
             .pi => return Token{ .Number = std.math.pi },
             .e => return Token{ .Number = std.math.e },
             .c => return Token{ .Number = 299792458.0 },
@@ -218,6 +226,54 @@ fn handleOneStr(comptime field_name: []const u8,
     }
 }
 
+fn switch_binary(iter: *std.mem.SplitIterator(u8, .sequence)) Token {
+    const binary_case = std.meta.stringToEnum(
+        Case, iter.next() orelse "invalid"
+    ) orelse Case.invalid;
+    const token_binary = switch (binary_case) {
+        .@"+" => Token{ .Reduce = add },
+        .@"-" => Token{ .Reduce = sub },
+        .@"*" => Token{ .Reduce = mul },
+        .@"/" => Token{ .Reduce = div },
+        .@"^" => Token{ .Reduce = pow }, // If you reduce with powers may God save your soul, but I will let commit this sin.
+        .pow => Token{ .Reduce = pow },
+        else => Token.Invalid,
+    };
+    return token_binary;
+}
+
+fn switch_unary(iter: *std.mem.SplitIterator(u8, .sequence)) Token {
+    const unary_case = std.meta.stringToEnum(
+        Case, iter.next() orelse "invalid"
+    ) orelse Case.invalid;
+    const token_unary_fn = switch (unary_case) {
+        .neg => Token{ .Map = neg },
+        .inv => Token{ .Map = inv },
+        .abs => Token{ .Map = abs },
+        .sq => Token{ .Map = sq },
+        .square => Token{ .Map = sq },
+        .sqrt => Token{ .Map = sqrt },
+        .cub => Token{ .Map = cub },
+        .cube => Token{ .Map = cub },
+        .cubrt => Token{ .Map = cbrt },
+        .exp => Token{ .Map = exp },
+        .ln => Token{ .Map = ln },
+        .log2 => Token{ .Map = log2 },
+        .log10 => Token{ .Map = log10 },
+        .sin => Token{ .Map = sin },
+        .asin => Token{ .Map = asin },
+        .cos => Token{ .Map = cos },
+        .acos => Token{ .Map = acos },
+        .sinh => Token{ .Map = sinh },
+        .asinh => Token{ .Map = asinh },
+        .cosh => Token{ .Map = cosh },
+        .acosh => Token{ .Map = acosh },
+        .tanh => Token{ .Map = tanh },
+        .atanh => Token{ .Map = atanh },
+        else => Token.Invalid,
+    };
+    return token_unary_fn;
+}
 
 fn add(num1: f64, num2: f64) f64 { return num1 + num2; }
 fn sub(num1: f64, num2: f64) f64 { return num1 - num2; }
@@ -236,5 +292,15 @@ fn exp(num: f64) f64 { return std.math.exp(num); }
 fn ln(num: f64) f64 { return std.math.log(f64, std.math.e, num); }
 fn log2(num: f64) f64 { return std.math.log(f64, 2, num); }
 fn log10(num: f64) f64 { return std.math.log(f64, 10, num); }
-
-
+fn sin(num: f64) f64 { return std.math.sin(num); }
+fn asin(num: f64) f64 { return std.math.asin(num); }
+fn cos(num: f64) f64 { return std.math.cos(num); }
+fn acos(num:f64) f64 { return std.math.cos(num); }
+fn tan(num: f64) f64 { return std.math.tan(num); }
+fn atan(num:f64) f64 { return std.math.tan(num); }
+fn sinh(num:f64) f64 { return std.math.sinh(num); }
+fn asinh(num: f64) f64 { return std.math.asinh(num); }
+fn cosh(num: f64) f64 { return std.math.cosh(num); }
+fn acosh(num: f64) f64 { return std.math.acosh(num); }
+fn tanh(num: f64) f64 { return std.math.tanh(num); }
+fn atanh(num: f64) f64 { return std.math.atanh(num); }

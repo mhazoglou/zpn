@@ -36,27 +36,49 @@ pub const Session = struct {
         try self.history.appendSlice("\n");
     }
     
-    pub fn op_binary(self: *Session, bin_closure: *const fn(num1: f64, num2: f64) f64) !void {
+    pub fn op_binary(self: *Session, bin_fn: *const fn(num1: f64, num2: f64) f64) !void {
         if (self.stack.items.len > 1) {
             const y = self.pop_from_stack();
             const x = self.pop_from_stack();
-            try self.append_to_stack(bin_closure(x, y));
+            try self.append_to_stack(bin_fn(x, y));
         } else {
             std.debug.print("You need at least two numbers in ", .{});
-            std.debug.print("the stack to perform binary operations.\n", .{});
+            std.debug.print("the stack to perform binary operations.\n\n", .{});
         }
         // self.update_states();
     }
+
+    pub fn reduce(self: *Session, bin_fn: *const fn(num1: f64, num2: f64) f64) !void {
+        while (self.stack.items.len > 1) {
+            const y = self.pop_from_stack();
+            const x = self.pop_from_stack();
+            try self.append_to_stack(bin_fn(x, y));
+        } else {
+            std.debug.print("You need at least two numbers in ", .{});
+            std.debug.print("the stack to perform binary operations.\n\n", .{});
+        }
+    }
     
-    pub fn op_unary(self: *Session, un_closure: *const fn(num: f64) f64) !void {
+    pub fn op_unary(self: *Session, un_fn: *const fn(num: f64) f64) !void {
         if (self.stack.items.len >= 1) {
             const x = self.pop_from_stack();
-            try self.append_to_stack(un_closure(x));
+            try self.append_to_stack(un_fn(x));
         } else {
             std.debug.print("You need at least one number in ", .{});
-            std.debug.print("the stack to perform unary operations.\n", .{});
+            std.debug.print("the stack to perform unary operations.\n\n", .{});
         }
         // self.update_states();
+    }
+
+    pub fn map(self: *Session, un_fn: *const fn(num: f64) f64) !void {
+        if (self.stack.items.len >= 1) {
+            for (self.stack.items) |*el_ptr| {
+                el_ptr.* = un_fn(el_ptr.*);
+            }
+        } else {
+            std.debug.print("You need at least one number in ", .{});
+            std.debug.print("the stack to perform unary operations.\n\n", .{});
+        }
     }
 
     pub fn swap(self: *Session) !void {
@@ -67,7 +89,7 @@ pub const Session = struct {
             try self.append_to_stack(x);
         } else {
             std.debug.print("You need at least two numbers in ", .{});
-            std.debug.print("the stack to perform binary operations.\n", .{});
+            std.debug.print("the stack to perform binary operations.\n\n", .{});
         }
         // self.update_states();
     }
