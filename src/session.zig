@@ -126,43 +126,6 @@ pub const Session = struct {
         try self.stack.insert(num, val);
     }
 
-    pub fn process_input(self: *Session, cmd_input: []u8) !bool {
-        var running = true;
-        var iter = std.mem.splitAny(u8, cmd_input, " \t\r\n");
-
-        while (iter.next()) |tk| {
-            if (!std.mem.eql(u8, tk[0..], "")) {
-                try self.append_to_history(tk[0..]);
-                const token = Tokenizer(tk[0..]);
-                running = self.match_token(token);
-                if (!running) {
-                    break;
-                }
-            }
-        }
-
-        return running;
-    }
-
-    fn match_token(self: *Session, token: Token) bool {
-        var running = true;
-        switch (token) {
-            .Number => |num| self.append_to_stack(num) catch unreachable,
-            .OpBinary => |func| self.op_binary(func) catch unreachable,
-            .OpUnary => |func| self.op_unary(func) catch unreachable,
-            .Swap => self.swap() catch unreachable,
-            .CyclicPermutation => |num| self.cyclic_permutation(num) catch unreachable,
-            .Get => |num| self.get(num) catch unreachable,
-            .ClearStack => self.clear_stack(),
-            .Del => |num| self.del(num),
-            .PrintHistory => self.print_history(),
-            .Quit => running = false,
-            .Copy => |num| self.copy(num) catch unreachable,
-            else => {std.debug.print("Skip\n", .{});},
-        }
-        return running;
-    }
-
     pub fn print_stack(self: *Session) void {
         std.debug.print("{any}\n", .{self});
     }

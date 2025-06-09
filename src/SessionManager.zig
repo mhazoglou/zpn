@@ -56,6 +56,7 @@ pub const SessionManager = struct {
         
         while (running) {
             var sess = self.map.get(self.current_session).?;
+            std.debug.print("Current session: {s}\n", .{self.current_session});
             sess.print_stack();
             @memset(buffer[0..], 0);
 
@@ -88,11 +89,6 @@ pub const SessionManager = struct {
                 if (!running) {
                     break;
                 }
-                std.debug.print("Hashmap: {!}\n\n", .{self.map});
-                var it = self.map.iterator();
-                while (it.next()) |entry| {
-                    std.debug.print("{s}\n", .{entry.key_ptr.*});
-                }
             }
         }
 
@@ -114,8 +110,10 @@ pub const SessionManager = struct {
             .PrintHistory => sess.print_history(),
             .Quit => running = false,
             .Copy => |num| sess.copy(num) catch unreachable,
-            .NewSession => |name| self.add_new_session(name[0..]) catch unreachable, 
-            .ChangeSession => |name| self.change_current_session(name[0..]), 
+            .NewSession => |name| self.add_new_session(name) catch unreachable, 
+            .ChangeSession => |name| self.change_current_session(name), 
+            .RemoveSession => |name| self.remove_session(name),
+            .PrintSessions => self.print_session_names(),
             else => {std.debug.print("What a beautiful duwang. Skip\n\n", .{});},
         }
         return running;
@@ -151,7 +149,28 @@ pub const SessionManager = struct {
         } else if (std.mem.eql(u8, name, self.current_session)) {
             std.debug.print("The current session cannot be deleted.\n\n", .{});
         } else {
-            _ = self.map.remove(name);
+            const opt_sess_entry = self.map.getEntry(name);
+            if (opt_sess_entry) |entry| {
+                // deinitialize and destroy session object
+                entry.value_ptr.*.deinit();
+                self.allocator.destroy(entry.value_ptr.*);
+                // remove entry from map make sure key lives long enough 
+                // for remove then destroy the key
+                const key = entry.key_ptr.*;
+                const removed = self.map.remove(key);
+                self.allocator.free(key);
+                if (removed) {
+                    std.debug.print(
+                        "Session {s} has successfully been removed.\n\n", 
+                        .{name}
+                    );
+                }
+            } else {
+                std.debug.print(
+                    "Session name {s} does not exist. Create it with new:{s}\n\n",
+                    .{name, name}
+                );
+            }
         }
     }
 };
