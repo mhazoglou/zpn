@@ -235,7 +235,7 @@ fn switch_binary(iter: *std.mem.SplitIterator(u8, .sequence)) Token {
         .@"-" => Token{ .Reduce = sub },
         .@"*" => Token{ .Reduce = mul },
         .@"/" => Token{ .Reduce = div },
-        .@"^" => Token{ .Reduce = pow }, // If you reduce with powers may God save your soul, but I will let commit this sin.
+        .@"^" => Token{ .Reduce = pow }, // If you reduce with powers may God save your soul, but I will let you commit this sin.
         .pow => Token{ .Reduce = pow },
         else => Token.Invalid,
     };
