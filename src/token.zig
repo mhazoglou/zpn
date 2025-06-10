@@ -232,12 +232,6 @@ fn handleInsert(iter: *std.mem.SplitIterator(u8, .scalar)) ?struct { usize, f64 
 fn handleOneNumber(comptime T: type, comptime field_name: []const u8, 
     iter: *std.mem.SplitIterator(u8, .scalar)
 ) Token {
-    // var len: u32 = 0;
-    // while (iter.next()) |_| {
-    //     len += 1;
-    // }
-    // iter.reset(); _  = iter.first();
-    // std.debug.print("length: {}", .{len});
     const str_opt = iter.next();
     if (str_opt) |val| {
         if (std.fmt.parseInt(T, val, 10)) |num| { 
