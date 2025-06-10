@@ -90,6 +90,7 @@ pub const SessionManager = struct {
                 if (!running) {
                     break;
                 }
+                std.debug.print("Stack length: {}\n\n", .{sess.stack.items.len});
             }
         }
 
@@ -108,6 +109,7 @@ pub const SessionManager = struct {
             .Swap => sess.swap() catch unreachable,
             .CyclicPermutation => |num| sess.cyclic_permutation(num) catch unreachable,
             .Get => |num| sess.get(num) catch unreachable,
+            .Insert => |nums| sess.insert(nums[0], nums[1]) catch unreachable,
             .ClearStack => sess.clear_stack(),
             .Del => |num| sess.del(num),
             .PrintHistory => sess.print_history(),

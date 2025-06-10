@@ -127,10 +127,10 @@ fn isAlphaNum(char: u8) bool {
 }
 
 pub fn Tokenizer(str: []const u8) Token {
-    if (std.fmt.parseFloat(f64, str[0..])) |val| { 
+    if (std.fmt.parseFloat(f64, str)) |val| { 
         return Token{ .Number = val}; 
     } else |_| {
-        var iter = std.mem.splitScalar(u8, str[0..], ':');
+        var iter = std.mem.splitScalar(u8, str, ':');
         //std.debug.print("{!}", .{@TypeOf(iter)});
         const case = std.meta.stringToEnum(Case, iter.first()) orelse Case.invalid;
         switch (case) {
@@ -191,26 +191,42 @@ pub fn Tokenizer(str: []const u8) Token {
             // .undo => return Token{ .OpUnary = *const fn },
             // .redo => return Token{ .OpUnary = *const fn },
             .get => return handleOneNumber(usize, "Get", &iter),
-            // .insert => {
-            //     const str_opt = iter.next();
-            //     if (str_opt) |val| {
-            //         if (std.fmt.parseInt(usize, val, 10)) |num| {
-            //             const sec_str_opt = iter.next();
-            //             if (str_opt) |val2| {
-            //                 std.fmt.parseFloat(f64, val2);
-            //             } else {
-            //                 return Token.Invalid;
-            //             }
-            //                                 } 
-            //     } else { return Token.Invalid; }
-            //     return Token{ .Insert = .{0, 0.5} };
-            // },
+            .insert => return Token{ 
+                .Insert = handleInsert(&iter) orelse return Token.Invalid 
+            },
             .copy => return handleOneNumber(u32, "Copy", &iter),
             .cpy =>  return handleOneNumber(u32, "Copy", &iter),
             .invalid => return Token.Invalid,
             else => return Token.Invalid,
         }
     }
+}
+
+fn handleInsert(iter: *std.mem.SplitIterator(u8, .scalar)) ?struct { usize, f64 } {
+    var loc: usize = undefined; 
+    var first: bool = true;
+    while (iter.next()) |str| {
+        if (first) {
+            first = false;
+            if (std.fmt.parseInt(usize, str, 10)) |num| {
+                loc = num;
+            } else |_| { return null; }
+        } else {
+            if (std.fmt.parseFloat(f64, str)) |num| {
+                return .{ loc, num};
+            } else  |_| {
+                const case = std.meta.stringToEnum(Case, str) orelse Case.invalid;
+                switch (case) {
+                    .pi => return .{ loc, std.math.pi },
+                    .e => return .{ loc, std.math.e },
+                    .c => return .{ loc, 299792458.0 },
+                    .h => return .{ loc, 6.62607015e-34 },
+                    .h_bar => return .{ loc, 6.62607015e-34 / (2 * std.math.pi) },
+                    else => return null,
+                }
+            }
+        }
+    } else {return null;}
 }
 
 fn handleOneNumber(comptime T: type, comptime field_name: []const u8, 

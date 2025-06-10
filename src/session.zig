@@ -145,7 +145,11 @@ pub const Session = struct {
     }
 
     pub fn insert(self: *Session, num: usize, val: f64) !void {
-        try self.stack.insert(num, val);
+        if (self.stack.items.len >= num) {
+            try self.stack.insert(num, val);
+        } else {
+            std.debug.print("Provided index {} exceeds the length of the stack {}\n\n", .{num, self.stack.items.len});
+        }
     }
 
     pub fn print_stack(self: *Session) void {
