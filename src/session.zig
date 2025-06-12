@@ -53,6 +53,7 @@ pub const Session = struct {
             const y = self.pop_from_stack();
             const x = self.pop_from_stack();
             try self.append_to_stack(bin_fn(x, y));
+            if (self.stack.items.len == 1) break;
         } else {
             std.debug.print("You need at least two numbers in ", .{});
             std.debug.print("the stack to perform binary operations.\n\n", .{});

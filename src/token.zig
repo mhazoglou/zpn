@@ -1,31 +1,6 @@
 const std = @import("std");
 
-pub const TokenType = enum {
-    Number,
-    OpBinary,
-    Reduce,
-    OpUnary,
-    Map,
-    Del,
-    ClearStack,
-    Swap,
-    CyclicPermutation,
-    Get,
-    Insert,
-    Invalid,
-    NewSession,
-    RemoveSession,
-    ChangeSession,
-    ResetSession,
-    PrintSessions,
-    PrintHistory,
-    ClearHistory,
-    Undo,
-    Copy,
-    Quit,
-};
-
-pub const Token = union(TokenType) {
+pub const Token = union(enum) {
     Number: f64,
     OpBinary: *const fn (num1: f64, num2: f64) f64,
     Reduce: *const fn (num: f64, num: f64) f64,
