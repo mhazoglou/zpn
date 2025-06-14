@@ -2,6 +2,11 @@ const std = @import("std");
 const Token = @import("token.zig").Token;
 const Tokenizer = @import("token.zig").Tokenizer;
 const Allocator = std.mem.Allocator;
+const Colors = @import("colors.zig");
+
+const NUMERIC_COLOR = Colors.NUMERIC_COLOR;
+const SESS_NAME_COLOR = Colors.SESS_NAME_COLOR;
+const TEXT_COLOR = Colors.TEXT_COLOR;
 
 pub const Session = struct {
     stack: std.ArrayList(f64),
@@ -128,9 +133,10 @@ pub const Session = struct {
     pub fn copy(self: *Session, num: u32) !void {
         if (self.stack.items.len >= 1) {
             const last = self.stack.getLast();
-            for (0..num) |_| {
-                try self.append_to_stack(last);
-            }
+            try self.stack.appendNTimes(last, num);
+            // for (0..num) |_| {
+            //     try self.append_to_stack(last);
+            // }
         } else {
             std.debug.print("Cannot copy any elements the stack is empty.\n", .{});
         }
@@ -164,11 +170,11 @@ pub const Session = struct {
     pub fn format(self: *Session, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
         _ = fmt;
         _ = options;
-        try writer.print("Stack {{\n", .{});
-        for (self.stack.items) |n| {
-            try writer.print("    {d}\n", .{n});
+        try writer.print("Index:\t{}Stack \x1b[0m{{\n", .{TEXT_COLOR});
+        for (self.stack.items, 0..) |n, i| {
+            try writer.print("{}\t    {}{d}\n\x1b[0m", .{i, NUMERIC_COLOR, n});
         }
-        try writer.print("}}\n", .{});
+        try writer.print("\t\x1b[0m}}\n", .{});
     }
 
 };

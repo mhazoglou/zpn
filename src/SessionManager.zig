@@ -3,6 +3,12 @@ const Allocator = std.mem.Allocator;
 const Session = @import("session.zig").Session;
 const Token = @import("token.zig").Token;
 const Tokenizer = @import("token.zig").Tokenizer;
+const Colors = @import("colors.zig");
+
+const NUMERIC_COLOR = Colors.NUMERIC_COLOR;
+const SESS_NAME_COLOR = Colors.SESS_NAME_COLOR;
+const TEXT_COLOR = Colors.TEXT_COLOR;
+const ALERT_COLOR = Colors.ALERT_COLOR;
 
 // More than enough to kill anything that moves
 const BUFFERSIZE = 4096;
@@ -48,20 +54,29 @@ pub const SessionManager = struct {
     }
     
     pub fn run_manager(self: *SessionManager) !void {
-        std.debug.print("Type \"exit\" or \"quit\" to quit\n", .{});
+        std.debug.print("Type {}\"exit\"\x1b[0m or {}\"quit\"\x1b[0m to quit\n", 
+            .{ALERT_COLOR, ALERT_COLOR});
         var running = true;
         // Define stdin reader
-        const stdin = std.io.getStdIn().reader();
-        
+        const stdin = std.io.getStdIn();
+        const reader = stdin.reader();
+        var stdout = std.io.getStdOut();
+        var writer = stdout.writer();
+
+        // var buffered_writer = std.io.bufferedWriter(&writer).writer();
+
         var buffer: [BUFFERSIZE]u8 = undefined;
         
         while (running) {
-            var sess = self.map.get(self.current_session).?;
-            std.debug.print("Current session: {s}\n", .{self.current_session});
-            sess.print_stack();
+            const sess = self.map.get(self.current_session).?;
+            try writer.writeAll("{}Current session: {}{s}\x1b[0m\n"//, 
+                //.{TEXT_COLOR, SESS_NAME_COLOR, self.current_session}
+            );
+            try writer.print("{}", .{sess});
+            //sess.print_stack();
             @memset(buffer[0..], 0);
 
-            _ = try stdin.readUntilDelimiterOrEof(buffer[0..], '\n');
+            _ = try reader.readUntilDelimiterOrEof(buffer[0..], '\n');
             
             // I need to only use the appropriate length without the null characters
             var len_buffer: usize = 0;
@@ -72,11 +87,12 @@ pub const SessionManager = struct {
             const cmd_input = std.mem.asBytes(&buffer)[0..len_buffer];
             
             // print!("\nCurrent Session: {}", self.current_session.borrow());
-            running = try self.process_input(cmd_input);
+            running = try self.process_input(cmd_input, &writer);
         }
+        // try buffered_writer.flush();
     }
 
-    fn process_input(self: *SessionManager, cmd_input: []u8) !bool {
+    fn process_input(self: *SessionManager, cmd_input: []u8, writer: anytype) !bool {
         var running = true;
         var iter = std.mem.splitAny(u8, cmd_input, " \t\r\n");
         const sess = self.map.get(self.current_session).?;
@@ -85,19 +101,19 @@ pub const SessionManager = struct {
             if (!std.mem.eql(u8, tk[0..], "")) {
                 try sess.append_to_history(tk[0..]);
                 const token = Tokenizer(tk[0..]);
-                std.debug.print("Token is : {any}\n\n", .{token});
-                running = self.match_token(token);
+                std.debug.print("\nToken is : {any}\n", .{token});
+                std.debug.print("Stack length: {}\n\n", .{sess.stack.items.len});
+                running = self.match_token(token, writer);
                 if (!running) {
                     break;
                 }
-                std.debug.print("Stack length: {}\n\n", .{sess.stack.items.len});
             }
         }
 
         return running;
     }
 
-    fn match_token(self: *SessionManager, token: Token) bool {
+    fn match_token(self: *SessionManager, token: Token, writer: anytype) bool {
         var sess = self.map.get(self.current_session).?;
         var running = true;
         switch (token) {
@@ -116,9 +132,9 @@ pub const SessionManager = struct {
             .Quit => running = false,
             .Copy => |num| sess.copy(num) catch unreachable,
             .NewSession => |name| self.add_new_session(name) catch unreachable, 
-            .ChangeSession => |name| self.change_current_session(name), 
-            .RemoveSession => |name| self.remove_session(name),
-            .PrintSessions => self.print_session_names(),
+            .ChangeSession => |name| self.change_current_session(name, writer) catch unreachable, 
+            .RemoveSession => |name| self.remove_session(name, writer) catch unreachable,
+            .PrintSessions => self.print_session_names(writer) catch unreachable,
             else => {std.debug.print("What a beautiful duwang. Skip\n\n", .{});},
         }
         return running;
@@ -130,32 +146,32 @@ pub const SessionManager = struct {
         try self.map.put(sess_name, new_sess);
     }
 
-    fn change_current_session(self: *SessionManager, name: []const u8) void {
+    fn change_current_session(self: *SessionManager, name: []const u8, writer: anytype) !void {
         const opt_sess_key = self.map.getKey(name);
         if (opt_sess_key) |key| {
             self.current_session = key;
         } else {
-            std.debug.print(
-                "Session name {s} does not exist. Create it with new:{s}\n\n", 
-                .{name, name}
+            try writer.print(
+                "{}Session name {s} does not exist. Create it with new:{s}\n\n", 
+                .{ALERT_COLOR, name, name}
             );
         }
     }
 
-    fn print_session_names(self: *SessionManager) void {
+    fn print_session_names(self: *SessionManager, writer: anytype) !void {
         var it = self.map.iterator();
-        std.debug.print("Sessions:\n", .{});
+        try writer.print("{}Sessions:\n{}", .{TEXT_COLOR, SESS_NAME_COLOR});
         while (it.next()) |entry| {
-            std.debug.print("{s}\n", .{entry.key_ptr.*});
+            try writer.print("{s}\n", .{entry.key_ptr.*});
         }
-        std.debug.print("\n", .{});
+        try writer.print("\n", .{});
     }
 
-    fn remove_session(self: *SessionManager, name: []const u8) void {
+    fn remove_session(self: *SessionManager, name: []const u8, writer: anytype) !void {
         if (std.mem.eql(u8, name, "default")) {
-            std.debug.print("The default session cannot be deleted.\n\n", .{});
+            try writer.print("{}The default session cannot be deleted.\n\n", .{ALERT_COLOR});
         } else if (std.mem.eql(u8, name, self.current_session)) {
-            std.debug.print("The current session cannot be deleted.\n\n", .{});
+            try writer.print("{}The current session cannot be deleted.\n\n", .{ALERT_COLOR});
         } else {
             const opt_sess_entry = self.map.getEntry(name);
             if (opt_sess_entry) |entry| {
@@ -168,18 +184,17 @@ pub const SessionManager = struct {
                 const removed = self.map.remove(key);
                 self.allocator.free(key);
                 if (removed) {
-                    std.debug.print(
-                        "Session {s} has successfully been removed.\n\n", 
-                        .{name}
+                    try writer.print(
+                        "{}Session {s} has successfully been removed.\n\n", 
+                        .{ALERT_COLOR, name}
                     );
                 }
             } else {
-                std.debug.print(
-                    "Session name {s} does not exist. Create it with new:{s}\n\n",
-                    .{name, name}
+                try writer.print(
+                    "{}Session name {s} does not exist. Create it with new:{s}\n\n",
+                    .{ALERT_COLOR, name, name}
                 );
             }
         }
     }
 };
-
