@@ -54,8 +54,7 @@ pub const SessionManager = struct {
     }
     
     pub fn run_manager(self: *SessionManager) !void {
-        std.debug.print("Type {}\"exit\"\x1b[0m or {}\"quit\"\x1b[0m to quit\n", 
-            .{ALERT_COLOR, ALERT_COLOR});
+
         var running = true;
         // Define stdin reader
         const stdin = std.io.getStdIn();
@@ -63,14 +62,17 @@ pub const SessionManager = struct {
         var stdout = std.io.getStdOut();
         var writer = stdout.writer();
 
+        _ = std.io.tty.detectConfig(stdout);
+
         // var buffered_writer = std.io.bufferedWriter(&writer).writer();
 
         var buffer: [BUFFERSIZE]u8 = undefined;
-        
+        try writer.print("Type {}\"exit\"\x1b[0m or {}\"quit\"\x1b[0m to quit\n", 
+            .{ALERT_COLOR, ALERT_COLOR});
         while (running) {
             const sess = self.map.get(self.current_session).?;
-            try writer.writeAll("{}Current session: {}{s}\x1b[0m\n"//, 
-                //.{TEXT_COLOR, SESS_NAME_COLOR, self.current_session}
+            try writer.print("{}Current session: {}{s}\x1b[0m\n", 
+                .{TEXT_COLOR, SESS_NAME_COLOR, self.current_session}
             );
             try writer.print("{}", .{sess});
             //sess.print_stack();
@@ -101,8 +103,8 @@ pub const SessionManager = struct {
             if (!std.mem.eql(u8, tk[0..], "")) {
                 try sess.append_to_history(tk[0..]);
                 const token = Tokenizer(tk[0..]);
-                std.debug.print("\nToken is : {any}\n", .{token});
-                std.debug.print("Stack length: {}\n\n", .{sess.stack.items.len});
+                try writer.print("\nToken is : {any}\n", .{token});
+                try writer.print("Stack length: {}\n\n", .{sess.stack.items.len});
                 running = self.match_token(token, writer);
                 if (!running) {
                     break;
