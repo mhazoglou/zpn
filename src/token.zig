@@ -3,7 +3,7 @@ const std = @import("std");
 pub const Token = union(enum) {
     Number: f64,
     OpBinary: *const fn (num1: f64, num2: f64) f64,
-    Reduce: *const fn (num: f64, num: f64) f64,
+    Reduce: *const fn (num1: f64, num2: f64) f64,
     OpUnary: *const fn (num: f64) f64,
     Map: *const fn (num: f64) f64,
     Del: u32,
@@ -309,3 +309,11 @@ fn cosh(num: f64) f64 { return std.math.cosh(num); }
 fn acosh(num: f64) f64 { return std.math.acosh(num); }
 fn tanh(num: f64) f64 { return std.math.tanh(num); }
 fn atanh(num: f64) f64 { return std.math.atanh(num); }
+fn bin_to_un(bin_fn: *const fn(num1: f64, num2: f64) f64, num: f64) *const fn(num1: f64) f64{
+    return struct {
+        // define function within anonymous struct to return
+        fn out_un(num1: f64) f64 {
+            return bin_fn(num1, num);
+        }
+    }.out_un; 
+}
