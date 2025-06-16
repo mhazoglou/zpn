@@ -20,7 +20,8 @@ pub const Token = union(enum) {
     PrintSessions: void,
     PrintHistory: void,
     ClearHistory: void,
-    Undo: i32,
+    Undo: u32,
+    Redo: u32,
     Copy: u32,
     Quit: void,
 };
@@ -163,8 +164,8 @@ pub fn Tokenizer(str: []const u8) Token {
             .sess => return Token.PrintSessions,
             .hist => return Token.PrintHistory,
             // .hist_clear => return Token{ .OpUnary = *const fn },
-            // .undo => return Token{ .OpUnary = *const fn },
-            // .redo => return Token{ .OpUnary = *const fn },
+            .undo => return handleOneNumber(u32, "Undo", &iter),
+            .redo => return handleOneNumber(u32, "Redo", &iter),
             .get => return handleOneNumber(usize, "Get", &iter),
             .insert => return Token{ 
                 .Insert = handleInsert(&iter) orelse return Token.Invalid 

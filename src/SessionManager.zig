@@ -128,8 +128,8 @@ pub const SessionManager = struct {
             .CyclicPermutation => |num| sess.cyclic_permutation(num) catch unreachable,
             .Get => |num| sess.get(num) catch unreachable,
             .Insert => |nums| sess.insert(nums[0], nums[1]) catch unreachable,
-            .ClearStack => sess.clear_stack(),
-            .Del => |num| sess.del(num),
+            .ClearStack => sess.clear_stack() catch unreachable,
+            .Del => |num| sess.del(num) catch unreachable,
             .PrintHistory => sess.print_history(),
             .Quit => running = false,
             .Copy => |num| sess.copy(num) catch unreachable,
@@ -137,6 +137,8 @@ pub const SessionManager = struct {
             .ChangeSession => |name| self.change_current_session(name, writer) catch unreachable, 
             .RemoveSession => |name| self.remove_session(name, writer) catch unreachable,
             .PrintSessions => self.print_session_names(writer) catch unreachable,
+            .Undo => |num| sess.undo(num) catch unreachable,
+            .Redo => |num| sess.redo(num) catch unreachable,
             else => {std.debug.print("What a beautiful duwang. Skip\n\n", .{});},
         }
         return running;
