@@ -21,8 +21,8 @@ pub const Color = struct {
     }
 };
 
-pub const NUMERIC_COLOR = Color.init(137, 180, 250);
+pub const NUMERIC_COLOR = Color.init(137, 220, 250);
 pub const SESS_NAME_COLOR = Color.init(166, 227, 161);
 pub const TEXT_COLOR = Color.init(249, 226, 175);
 pub const ALERT_COLOR = Color.init(243, 139, 168);
-// pub const _COLOR = Color.init(136, 57, 239);
+pub const INDEX_COLOR = Color.init(203, 166, 247);

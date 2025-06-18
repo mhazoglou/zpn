@@ -121,6 +121,7 @@ pub const SessionManager = struct {
         switch (token) {
             .Number => |num| sess.append_to_stack(num) catch unreachable,
             .OpBinary => |func| sess.op_binary(func) catch unreachable,
+            .Elementwise => |group| sess.elementwise(group[0], group[1]) catch unreachable,
             .Reduce => |func| sess.reduce(func) catch unreachable,
             .OpUnary => |func| sess.op_unary(func) catch unreachable,
             .Map => |func| sess.map(func) catch unreachable,

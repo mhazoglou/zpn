@@ -7,6 +7,7 @@ const Colors = @import("colors.zig");
 const NUMERIC_COLOR = Colors.NUMERIC_COLOR;
 const SESS_NAME_COLOR = Colors.SESS_NAME_COLOR;
 const TEXT_COLOR = Colors.TEXT_COLOR;
+const INDEX_COLOR = Colors.INDEX_COLOR;
 
 pub const Session = struct {
     stack: std.ArrayList(f64),
@@ -64,7 +65,7 @@ pub const Session = struct {
         try self.history.appendSlice("\n");
     }
     
-    pub fn op_binary(self: *Session, bin_fn: *const fn(num1: f64, num2: f64) f64) !void {
+    pub fn op_binary(self: *Session, bin_fn: *const fn(f64, f64) f64) !void {
         if (self.stack.items.len > 1) {
             const y = self.pop_from_stack();
             const x = self.pop_from_stack();
@@ -75,7 +76,7 @@ pub const Session = struct {
         }
     }
 
-    pub fn reduce(self: *Session, bin_fn: *const fn(num1: f64, num2: f64) f64) !void {
+    pub fn reduce(self: *Session, bin_fn: *const fn(f64, f64) f64) !void {
         var acc = self.pop_from_stack();
         while (self.stack.items.len > 0) {
             const x = self.pop_from_stack();
@@ -89,8 +90,21 @@ pub const Session = struct {
             std.debug.print("the stack to perform binary operations.\n\n", .{});
         }
     }
+
+    pub fn elementwise(self: *Session, num: f64, bin_fn: *const fn(f64,f64) f64) !void {
+        if (self.stack.items.len >= 1) {
+            for (self.stack.items) |*el_ptr| {
+                el_ptr.* = bin_fn(el_ptr.*, num);
+            }
+            try self.update_states();
+        } else {
+            std.debug.print("You need at least one number in ", .{});
+            std.debug.print("the stack to perform unary operations.\n\n", .{});
+        }
+
+    }
     
-    pub fn op_unary(self: *Session, un_fn: *const fn(num: f64) f64) !void {
+    pub fn op_unary(self: *Session, un_fn: *const fn(f64) f64) !void {
         if (self.stack.items.len >= 1) {
             const x = self.pop_from_stack();
             try self.append_to_stack(un_fn(x));
@@ -226,12 +240,15 @@ pub const Session = struct {
     pub fn format(self: *Session, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
         _ = fmt;
         _ = options;
-        try writer.print("Index:\t{}Stack \x1b[0m{{\n", .{TEXT_COLOR});
+        try writer.print("{}Index:\t{}Stack \x1b[0m{{\n", 
+            .{INDEX_COLOR, NUMERIC_COLOR});
         for (self.stack.items, 0..) |n, i| {
             if ((@abs(n) > 1e6) or (@abs(n) < 1e-3) and (n != 0)) {
-                try writer.print("{}\t    {}{}\n\x1b[0m", .{i, NUMERIC_COLOR, n});
+                try writer.print("{}{}\t    {}{}\n\x1b[0m", 
+                    .{INDEX_COLOR, i, NUMERIC_COLOR, n});
             } else {
-                try writer.print("{}\t    {}{d}\n\x1b[0m", .{i, NUMERIC_COLOR, n});
+                try writer.print("{}{}\t    {}{d}\n\x1b[0m", 
+                    .{INDEX_COLOR, i, NUMERIC_COLOR, n});
             }
         }
         try writer.print("\t\x1b[0m}}\n", .{});

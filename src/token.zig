@@ -2,10 +2,11 @@ const std = @import("std");
 
 pub const Token = union(enum) {
     Number: f64,
-    OpBinary: *const fn (num1: f64, num2: f64) f64,
-    Reduce: *const fn (num1: f64, num2: f64) f64,
-    OpUnary: *const fn (num: f64) f64,
-    Map: *const fn (num: f64) f64,
+    Elementwise: struct { f64, *const fn (f64, f64) f64},
+    OpBinary: *const fn (f64, f64) f64,
+    Reduce: *const fn (f64, f64) f64,
+    OpUnary: *const fn (f64) f64,
+    Map: *const fn (f64) f64,
     Del: u32,
     ClearStack: void,
     Swap: void,
@@ -28,6 +29,7 @@ pub const Token = union(enum) {
 
 const Case = enum {
     reduce,
+    el,
     @"+", 
     @"-",
     @"*",
@@ -111,6 +113,7 @@ pub fn Tokenizer(str: []const u8) Token {
         const case = std.meta.stringToEnum(Case, iter.first()) orelse Case.invalid;
         switch (case) {
             .reduce => return switch_binary(&iter),
+            .el => return handleElementwise(&iter),
             .@"+" => return Token{ .OpBinary = add },
             .@"-" => return Token{ .OpBinary = sub },
             .@"*" => return Token{ .OpBinary = mul },
@@ -248,9 +251,9 @@ fn switch_binary(iter: *std.mem.SplitIterator(u8, .scalar)) Token {
 }
 
 fn switch_unary(iter: *std.mem.SplitIterator(u8, .scalar)) Token {
+    const str = iter.next() orelse "invalid";
     const unary_case = std.meta.stringToEnum(
-        Case, iter.next() orelse "invalid"
-    ) orelse Case.invalid;
+        Case, str) orelse Case.invalid;
     const token_unary_fn = switch (unary_case) {
         .neg => Token{ .Map = neg },
         .inv => Token{ .Map = inv },
@@ -278,6 +281,27 @@ fn switch_unary(iter: *std.mem.SplitIterator(u8, .scalar)) Token {
         else => Token.Invalid,
     };
     return token_unary_fn;
+}
+
+fn handleElementwise(iter: *std.mem.SplitIterator(u8, .scalar)) Token {
+    const first_str = iter.next() orelse "invalid";
+    if (std.fmt.parseFloat(f64, first_str)) |val| { 
+        const str = iter.next() orelse "invalid";
+        const binary_case = std.meta.stringToEnum(
+            Case, str) orelse Case.invalid;
+        const token_binary = switch (binary_case) {
+                .@"+" => Token{ .Elementwise = .{val, add} },
+                .@"-" => Token{ .Elementwise = .{val, sub} },
+                .@"*" => Token{ .Elementwise = .{val, mul} },
+                .@"/" => Token{ .Elementwise = .{val, div} },
+                .@"^" => Token{ .Elementwise = .{val, pow} }, // If you reduce with powers may God save your soul, but I will let you commit this sin.
+                .pow => Token{ .Elementwise = .{val, pow} },
+                else => Token.Invalid,
+        };
+        return token_binary;
+    } else |_| {
+        return Token.Invalid;
+    }
 }
 
 fn add(num1: f64, num2: f64) f64 { return num1 + num2; }
@@ -309,11 +333,5 @@ fn cosh(num: f64) f64 { return std.math.cosh(num); }
 fn acosh(num: f64) f64 { return std.math.acosh(num); }
 fn tanh(num: f64) f64 { return std.math.tanh(num); }
 fn atanh(num: f64) f64 { return std.math.atanh(num); }
-fn bin_to_un(bin_fn: *const fn(num1: f64, num2: f64) f64, num: f64) *const fn(num1: f64) f64{
-    return struct {
-        // define function within anonymous struct to return
-        fn out_un(num1: f64) f64 {
-            return bin_fn(num1, num);
-        }
-    }.out_un; 
-}
+
+
