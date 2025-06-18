@@ -7,6 +7,7 @@ const Colors = @import("colors.zig");
 const NUMERIC_COLOR = Colors.NUMERIC_COLOR;
 const SESS_NAME_COLOR = Colors.SESS_NAME_COLOR;
 const TEXT_COLOR = Colors.TEXT_COLOR;
+const ALERT_COLOR = Colors.ALERT_COLOR;
 const INDEX_COLOR = Colors.INDEX_COLOR;
 
 pub const Session = struct {
@@ -65,18 +66,18 @@ pub const Session = struct {
         try self.history.appendSlice("\n");
     }
     
-    pub fn op_binary(self: *Session, bin_fn: *const fn(f64, f64) f64) !void {
+    pub fn op_binary(self: *Session, bin_fn: *const fn(f64, f64) f64, writer: anytype) !void {
         if (self.stack.items.len > 1) {
             const y = self.pop_from_stack();
             const x = self.pop_from_stack();
             try self.append_to_stack(bin_fn(x, y));
         } else {
-            std.debug.print("You need at least two numbers in ", .{});
-            std.debug.print("the stack to perform binary operations.\n\n", .{});
+            try writer.print("{}You need at least two numbers in ", .{ALERT_COLOR});
+            try writer.print("the stack to perform binary operations.\n\n", .{});
         }
     }
 
-    pub fn reduce(self: *Session, bin_fn: *const fn(f64, f64) f64) !void {
+    pub fn reduce(self: *Session, bin_fn: *const fn(f64, f64) f64, writer: anytype) !void {
         var acc = self.pop_from_stack();
         while (self.stack.items.len > 0) {
             const x = self.pop_from_stack();
@@ -86,47 +87,47 @@ pub const Session = struct {
                 break;
             }
         } else {
-            std.debug.print("You need at least two numbers in ", .{});
-            std.debug.print("the stack to perform binary operations.\n\n", .{});
+            try writer.print("{}You need at least two numbers in ", .{ALERT_COLOR});
+            try writer.print("the stack to perform binary operations.\n\n", .{});
         }
     }
 
-    pub fn elementwise(self: *Session, num: f64, bin_fn: *const fn(f64,f64) f64) !void {
+    pub fn elementwise(self: *Session, num: f64, bin_fn: *const fn(f64,f64) f64, writer: anytype) !void {
         if (self.stack.items.len >= 1) {
             for (self.stack.items) |*el_ptr| {
                 el_ptr.* = bin_fn(el_ptr.*, num);
             }
             try self.update_states();
         } else {
-            std.debug.print("You need at least one number in ", .{});
-            std.debug.print("the stack to perform unary operations.\n\n", .{});
+            try writer.print("{}You need at least one number in ", .{ALERT_COLOR});
+            try writer.print("the stack to perform unary operations.\n\n", .{});
         }
 
     }
     
-    pub fn op_unary(self: *Session, un_fn: *const fn(f64) f64) !void {
+    pub fn op_unary(self: *Session, un_fn: *const fn(f64) f64, writer: anytype) !void {
         if (self.stack.items.len >= 1) {
             const x = self.pop_from_stack();
             try self.append_to_stack(un_fn(x));
         } else {
-            std.debug.print("You need at least one number in ", .{});
-            std.debug.print("the stack to perform unary operations.\n\n", .{});
+            try writer.print("{}You need at least one number in ", .{ALERT_COLOR});
+            try writer.print("the stack to perform unary operations.\n\n", .{});
         }
     }
 
-    pub fn map(self: *Session, un_fn: *const fn(num: f64) f64) !void {
+    pub fn map(self: *Session, un_fn: *const fn(num: f64) f64, writer: anytype) !void {
         if (self.stack.items.len >= 1) {
             for (self.stack.items) |*el_ptr| {
                 el_ptr.* = un_fn(el_ptr.*);
             }
             try self.update_states();
         } else {
-            std.debug.print("You need at least one number in ", .{});
-            std.debug.print("the stack to perform unary operations.\n\n", .{});
+            try writer.print("{}You need at least one number in ", .{ALERT_COLOR});
+            try writer.print("the stack to perform unary operations.\n\n", .{});
         }
     }
 
-    pub fn swap(self: *Session) !void {
+    pub fn swap(self: *Session, writer: anytype) !void {
         if (self.stack.items.len > 1) {
             const y = self.pop_from_stack();
             const x = self.pop_from_stack();
@@ -134,8 +135,8 @@ pub const Session = struct {
             try self.stack.append(x);
             try self.update_states();
         } else {
-            std.debug.print("You need at least two numbers in ", .{});
-            std.debug.print("the stack to perform binary operations.\n\n", .{});
+            try writer.print("{}You need at least two numbers in ", .{ALERT_COLOR});
+            try writer.print("the stack to perform binary operations.\n\n", .{});
         }
     }
 
@@ -172,34 +173,34 @@ pub const Session = struct {
         try self.update_states();
     }
 
-    pub fn copy(self: *Session, num: u32) !void {
+    pub fn copy(self: *Session, num: u32, writer: anytype) !void {
         if (self.stack.getLastOrNull()) |last| {
             try self.stack.appendNTimes(last, num);
         } else {
-            std.debug.print("Cannot copy any elements the stack is empty.\n", .{});
+            try writer.print("{}Cannot copy any elements the stack is empty.\n", .{ALERT_COLOR});
         }
         try self.update_states();
     }
 
-    pub fn get(self: *Session, num: usize) !void {
+    pub fn get(self: *Session, num: usize, writer: anytype) !void {
         if (num < self.stack.items.len) {
             const item = self.stack.orderedRemove(num);
             try self.append_to_stack(item);
         } else {
-            std.debug.print("Index exceeds stack length.\n", .{});
+            try writer.print("Index exceeds stack length.\n", .{});
         }
     }
 
-    pub fn insert(self: *Session, num: usize, val: f64) !void {
+    pub fn insert(self: *Session, num: usize, val: f64, writer: anytype) !void {
         if (self.stack.items.len >= num) {
             try self.stack.insert(num, val);
         } else {
-            std.debug.print("Provided index {} exceeds the length of the stack {}\n\n", .{num, self.stack.items.len});
+            try writer.print("{}Provided index {} exceeds the length of the stack {}\n\n", .{ALERT_COLOR, num, self.stack.items.len});
         }
         try self.update_states();
     }
 
-    pub fn undo(self: *Session, num: u32) !void {
+    pub fn undo(self: *Session, num: u32, writer: anytype) !void {
         if (self.states.items.len >= num) {
             for (0..num) |_| {
                 const state = self.states.pop().?;
@@ -210,11 +211,11 @@ pub const Session = struct {
                 self.stack = try stack.clone();
             }
         } else {
-            std.debug.print("Exceeded the total history of operations.\n\n", .{});
+            try writer.print("{}Exceeded the total history of operations.\n\n", .{ALERT_COLOR});
         }
     }
 
-    pub fn redo(self: *Session, num: u32) !void {
+    pub fn redo(self: *Session, num: u32, writer: anytype) !void {
          if (self.undone_states.items.len >= num) {
             for (0..num) |_| {
                 const state = self.undone_states.pop().?;
@@ -225,33 +226,42 @@ pub const Session = struct {
                 self.stack = try stack.clone();
             }
         } else {
-            std.debug.print("Exceeded the total history of operations.\n\n", .{});
+            try writer.print("{}Exceeded the total history of operations.\n\n", .{ALERT_COLOR});
         }
     }
 
-    pub fn print_stack(self: *Session) void {
-        std.debug.print("{any}\n", .{self});
+    pub fn reset(self: *Session) void {
+        self.stack.clearAndFree();
+        self.history.clearAndFree();
+        for (self.states.items) |*state| {
+            state.deinit();    
+        }
+        self.states.clearAndFree();
+        for (self.undone_states.items) |*state| {
+            state.deinit();
+        }
+        self.undone_states.clearAndFree();
     }
 
-    pub fn print_history(self: *Session) void {
-        std.debug.print("{s}\n", .{self.history.items});
+    pub fn print_history(self: *Session, writer: anytype) !void {
+        try writer.print("{}History:\n{s}\n\n", .{TEXT_COLOR, self.history.items});
     }
 
     pub fn format(self: *Session, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
         _ = fmt;
         _ = options;
-        try writer.print("{}Index:\t{}Stack \x1b[0m{{\n", 
+        try writer.print("{}Index:\t{}Stack {{\n", 
             .{INDEX_COLOR, NUMERIC_COLOR});
         for (self.stack.items, 0..) |n, i| {
             if ((@abs(n) > 1e6) or (@abs(n) < 1e-3) and (n != 0)) {
-                try writer.print("{}{}\t    {}{}\n\x1b[0m", 
+                try writer.print("{}{}\t    {}{}\n", 
                     .{INDEX_COLOR, i, NUMERIC_COLOR, n});
             } else {
-                try writer.print("{}{}\t    {}{d}\n\x1b[0m", 
+                try writer.print("{}{}\t    {}{d}\n", 
                     .{INDEX_COLOR, i, NUMERIC_COLOR, n});
             }
         }
-        try writer.print("\t\x1b[0m}}\n", .{});
+        try writer.print("\t}}\x1b[0m\n", .{});
     }
 
 };

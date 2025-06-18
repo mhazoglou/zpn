@@ -92,18 +92,6 @@ const Case = enum {
     invalid,
 };
 
-fn isAlpha(char: u8) bool {
-    return (char >= 'a' and char <= 'z') or (char >= 'A' and char <= 'Z');
-}
-
-fn isDigit(char: u8) bool {
-    return (char >= '0' and char <= '9');
-}
-
-fn isAlphaNum(char: u8) bool {
-    return isDigit(char) and isAlpha(char);
-}
-
 pub fn Tokenizer(str: []const u8) Token {
     if (std.fmt.parseFloat(f64, str)) |val| { 
         return Token{ .Number = val}; 
@@ -163,7 +151,7 @@ pub fn Tokenizer(str: []const u8) Token {
             .go_to => return handleOneStr("ChangeSession", &iter),
             .goto => return handleOneStr("ChangeSession", &iter),
             .rm => return handleOneStr("RemoveSession", &iter),
-            // .reset => return Token{ .OpUnary = *const fn },
+            .reset => return Token.ResetSession,
             .sess => return Token.PrintSessions,
             .hist => return Token.PrintHistory,
             // .hist_clear => return Token{ .OpUnary = *const fn },

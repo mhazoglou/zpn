@@ -103,8 +103,6 @@ pub const SessionManager = struct {
             if (!std.mem.eql(u8, tk[0..], "")) {
                 try sess.append_to_history(tk[0..]);
                 const token = Tokenizer(tk[0..]);
-                try writer.print("\nToken is : {any}\n", .{token});
-                try writer.print("Stack length: {}\n\n", .{sess.stack.items.len});
                 running = self.match_token(token, writer);
                 if (!running) {
                     break;
@@ -120,26 +118,29 @@ pub const SessionManager = struct {
         var running = true;
         switch (token) {
             .Number => |num| sess.append_to_stack(num) catch unreachable,
-            .OpBinary => |func| sess.op_binary(func) catch unreachable,
-            .Elementwise => |group| sess.elementwise(group[0], group[1]) catch unreachable,
-            .Reduce => |func| sess.reduce(func) catch unreachable,
-            .OpUnary => |func| sess.op_unary(func) catch unreachable,
-            .Map => |func| sess.map(func) catch unreachable,
-            .Swap => sess.swap() catch unreachable,
+            .OpBinary => |func| sess.op_binary(func, writer) catch unreachable,
+            .Elementwise => |group| sess.elementwise(group[0], group[1], writer) catch unreachable,
+            .Reduce => |func| sess.reduce(func, writer) catch unreachable,
+            .OpUnary => |func| sess.op_unary(func, writer) catch unreachable,
+            .Map => |func| sess.map(func, writer) catch unreachable,
+            .Swap => sess.swap(writer) catch unreachable,
             .CyclicPermutation => |num| sess.cyclic_permutation(num) catch unreachable,
-            .Get => |num| sess.get(num) catch unreachable,
-            .Insert => |nums| sess.insert(nums[0], nums[1]) catch unreachable,
+            .Get => |num| sess.get(num, writer) catch unreachable,
+            .Insert => |nums| sess.insert(nums[0], nums[1], writer) catch unreachable,
             .ClearStack => sess.clear_stack() catch unreachable,
             .Del => |num| sess.del(num) catch unreachable,
-            .PrintHistory => sess.print_history(),
+            .PrintHistory => sess.print_history(writer) catch unreachable,
             .Quit => running = false,
-            .Copy => |num| sess.copy(num) catch unreachable,
+            .Copy => |num| sess.copy(num, writer) catch unreachable,
             .NewSession => |name| self.add_new_session(name) catch unreachable, 
             .ChangeSession => |name| self.change_current_session(name, writer) catch unreachable, 
             .RemoveSession => |name| self.remove_session(name, writer) catch unreachable,
             .PrintSessions => self.print_session_names(writer) catch unreachable,
-            .Undo => |num| sess.undo(num) catch unreachable,
-            .Redo => |num| sess.redo(num) catch unreachable,
+            .Undo => |num| sess.undo(num, writer) catch unreachable,
+            .Redo => |num| sess.redo(num, writer) catch unreachable,
+            .ResetSession => sess.reset(),
+            .Invalid => writer.print("{}An invalid token was entered.\x1b[0m\n\n", 
+                .{ALERT_COLOR}) catch unreachable,
             else => {std.debug.print("What a beautiful duwang. Skip\n\n", .{});},
         }
         return running;
