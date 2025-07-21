@@ -86,10 +86,7 @@ pub const SessionManager = struct {
                 len_buffer += 1;
             }
 
-            const cmd_input = std.mem.asBytes(&buffer)[0..len_buffer];
-            
-            // print!("\nCurrent Session: {}", self.current_session.borrow());
-            running = try self.process_input(cmd_input, &writer);
+            running = try self.process_input(buffer[0..len_buffer], &writer);
         }
         // try buffered_writer.flush();
     }
