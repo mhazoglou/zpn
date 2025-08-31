@@ -7,6 +7,9 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
+    //var reader = File.Reader.interface;
+    //var writer = File.Writer.interface;
+
     var manager = try SessionManager.init(allocator);
     defer manager.deinit();
     try manager.run_manager();
