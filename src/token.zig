@@ -97,7 +97,6 @@ pub fn Tokenizer(str: []const u8) Token {
         return Token{ .Number = val}; 
     } else |_| {
         var iter = std.mem.splitScalar(u8, str, ':');
-        //std.debug.print("{!}", .{@TypeOf(iter)});
         const case = std.meta.stringToEnum(Case, iter.first()) orelse Case.invalid;
         switch (case) {
             .reduce => return switch_binary(&iter),

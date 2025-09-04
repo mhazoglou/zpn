@@ -1,4 +1,6 @@
 const std = @import("std");
+const Io = std.Io;
+const File = std.fs.File;
 const Allocator = std.mem.Allocator;
 const Session = @import("session.zig").Session;
 const Token = @import("token.zig").Token;
@@ -54,47 +56,37 @@ pub const SessionManager = struct {
     }
     
     pub fn run_manager(self: *SessionManager) !void {
+        var stdin_buffer: [BUFFERSIZE]u8 = undefined;
+        var stdout_buffer: [BUFFERSIZE]u8 = undefined;
 
         var running = true;
-        // Define stdin reader
-        const stdin = std.io.getStdIn();
-        const reader = stdin.reader();
-        var stdout = std.io.getStdOut();
-        var writer = stdout.writer();
+        // Define stdin reader and stdout writer
+        var stdin_reader = File.stdin().reader(&stdin_buffer);
+        var reader = &stdin_reader.interface;
+        var stdout_writer= File.stdout().writer(&stdout_buffer);
+        var writer = &stdout_writer.interface;
 
-        _ = std.io.tty.detectConfig(stdout);
+        _ = Io.tty.detectConfig(stdin_reader.file);
 
-        // var buffered_writer = std.io.bufferedWriter(&writer).writer();
-
-        var buffer: [BUFFERSIZE]u8 = undefined;
-        try writer.print("Type {}\"exit\"\x1b[0m or {}\"quit\"\x1b[0m to quit\n", 
+        try writer.print("Type {f}\"exit\"\x1b[0m or {f}\"quit\"\x1b[0m to quit\n", 
             .{ALERT_COLOR, ALERT_COLOR});
         while (running) {
             const sess = self.map.get(self.current_session).?;
-            try writer.print("{}Current session: {}{s}\x1b[0m\n", 
+            try writer.print("{f}Current session: {f}{s}\x1b[0m\n", 
                 .{TEXT_COLOR, SESS_NAME_COLOR, self.current_session}
             );
-            try writer.print("{}", .{sess});
-            //sess.print_stack();
-            @memset(buffer[0..], 0);
+            try writer.print("{f}", .{sess});
+            try writer.flush();
+            @memset(stdin_buffer[0..], 0);
 
-            _ = try reader.readUntilDelimiterOrEof(buffer[0..], '\n');
-            
-            // I need to only use the appropriate length without the null characters
-            var len_buffer: usize = 0;
-            while (buffer[len_buffer] != 0) {
-                len_buffer += 1;
-            }
 
-            const cmd_input = std.mem.asBytes(&buffer)[0..len_buffer];
+            const str = try reader.takeDelimiterExclusive('\n');
             
-            // print!("\nCurrent Session: {}", self.current_session.borrow());
-            running = try self.process_input(cmd_input, &writer);
+            running = try self.process_input(str, writer);
         }
-        // try buffered_writer.flush();
     }
 
-    fn process_input(self: *SessionManager, cmd_input: []u8, writer: anytype) !bool {
+    fn process_input(self: *SessionManager, cmd_input: []u8, writer: *Io.Writer) !bool {
         var running = true;
         var iter = std.mem.splitAny(u8, cmd_input, " \t\r\n");
         const sess = self.map.get(self.current_session).?;
@@ -113,7 +105,7 @@ pub const SessionManager = struct {
         return running;
     }
 
-    fn match_token(self: *SessionManager, token: Token, writer: anytype) bool {
+    fn match_token(self: *SessionManager, token: Token, writer: *Io.Writer) bool {
         var sess = self.map.get(self.current_session).?;
         var running = true;
         switch (token) {
@@ -139,7 +131,7 @@ pub const SessionManager = struct {
             .Undo => |num| sess.undo(num, writer) catch unreachable,
             .Redo => |num| sess.redo(num, writer) catch unreachable,
             .ResetSession => sess.reset(),
-            .Invalid => writer.print("{}An invalid token was entered.\x1b[0m\n\n", 
+            .Invalid => writer.print("{f}An invalid token was entered.\x1b[0m\n\n", 
                 .{ALERT_COLOR}) catch unreachable,
             else => {std.debug.print("What a beautiful duwang. Skip\n\n", .{});},
         }
@@ -152,32 +144,32 @@ pub const SessionManager = struct {
         try self.map.put(sess_name, new_sess);
     }
 
-    fn change_current_session(self: *SessionManager, name: []const u8, writer: anytype) !void {
+    fn change_current_session(self: *SessionManager, name: []const u8, writer: *Io.Writer) !void {
         const opt_sess_key = self.map.getKey(name);
         if (opt_sess_key) |key| {
             self.current_session = key;
         } else {
             try writer.print(
-                "{}Session name {s} does not exist. Create it with new:{s}\n\n", 
+                "{f}Session name {s} does not exist. Create it with new:{s}\n\n", 
                 .{ALERT_COLOR, name, name}
             );
         }
     }
 
-    fn print_session_names(self: *SessionManager, writer: anytype) !void {
+    fn print_session_names(self: *SessionManager, writer: *Io.Writer) !void {
         var it = self.map.iterator();
-        try writer.print("{}Sessions:\n{}", .{TEXT_COLOR, SESS_NAME_COLOR});
+        try writer.print("{f}Sessions:\n{f}", .{TEXT_COLOR, SESS_NAME_COLOR});
         while (it.next()) |entry| {
             try writer.print("{s}\n", .{entry.key_ptr.*});
         }
         try writer.print("\n", .{});
     }
 
-    fn remove_session(self: *SessionManager, name: []const u8, writer: anytype) !void {
+    fn remove_session(self: *SessionManager, name: []const u8, writer: *Io.Writer) !void {
         if (std.mem.eql(u8, name, "default")) {
-            try writer.print("{}The default session cannot be deleted.\n\n", .{ALERT_COLOR});
+            try writer.print("{f}The default session cannot be deleted.\n\n", .{ALERT_COLOR});
         } else if (std.mem.eql(u8, name, self.current_session)) {
-            try writer.print("{}The current session cannot be deleted.\n\n", .{ALERT_COLOR});
+            try writer.print("{f}The current session cannot be deleted.\n\n", .{ALERT_COLOR});
         } else {
             const opt_sess_entry = self.map.getEntry(name);
             if (opt_sess_entry) |entry| {
@@ -191,13 +183,13 @@ pub const SessionManager = struct {
                 self.allocator.free(key);
                 if (removed) {
                     try writer.print(
-                        "{}Session {s} has successfully been removed.\n\n", 
+                        "{f}Session {s} has successfully been removed.\n\n", 
                         .{ALERT_COLOR, name}
                     );
                 }
             } else {
                 try writer.print(
-                    "{}Session name {s} does not exist. Create it with new:{s}\n\n",
+                    "{f}Session name {s} does not exist. Create it with new:{s}\n\n",
                     .{ALERT_COLOR, name, name}
                 );
             }

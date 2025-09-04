@@ -1,4 +1,5 @@
 const std = @import("std");
+const Io = std.Io;
 
 pub const Color = struct {
     red: u8,
@@ -14,9 +15,7 @@ pub const Color = struct {
         };
     }
 
-    pub fn format(self: *const Color, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
-        _ = fmt;
-        _ = options;
+    pub fn format(self: *const Color,  writer: *Io.Writer) !void {
         try writer.print("\x1b[38;2;{};{};{}m", .{self.red, self.green, self.blue});
     }
 };
