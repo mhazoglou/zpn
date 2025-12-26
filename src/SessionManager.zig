@@ -13,7 +13,7 @@ const TEXT_COLOR = Colors.TEXT_COLOR;
 const ALERT_COLOR = Colors.ALERT_COLOR;
 
 // More than enough to kill anything that moves
-const BUFFERSIZE = 4096;
+const BUFFERSIZE = 16384;
 
 pub const SessionManager = struct {
     map: std.StringHashMap(*Session),
@@ -80,7 +80,7 @@ pub const SessionManager = struct {
             @memset(stdin_buffer[0..], 0);
 
 
-            const str = try reader.takeDelimiterExclusive('\n');
+            const str = try reader.takeDelimiterInclusive('\n');
             
             running = try self.process_input(str, writer);
         }
