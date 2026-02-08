@@ -13,7 +13,7 @@ const TEXT_COLOR = Colors.TEXT_COLOR;
 const ALERT_COLOR = Colors.ALERT_COLOR;
 
 // More than enough to kill anything that moves
-const BUFFERSIZE = 16384;
+const BUFFERSIZE = 4096;
 
 pub const SessionManager = struct {
     map: std.StringHashMap(*Session),
