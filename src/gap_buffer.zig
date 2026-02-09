@@ -1,7 +1,8 @@
 const std = @import("std");
+const Io = std.Io;
 const Allocator = std.mem.Allocator;
 
-const GapBuffer = struct {
+pub const GapBuffer = struct {
     size: usize,
     cursor: usize,
     gap_len: usize,
@@ -79,6 +80,21 @@ const GapBuffer = struct {
             return;
         }
         self.gap_len += 1;
+    }
+
+    pub fn outputString(self: *GapBuffer, allocator: Allocator) ![]u8 {
+        var str: []u8 = undefined; 
+        if (self.cursor + self.gap_len <= self.size - 1) {
+            str = try std.mem.concat(allocator, u8, 
+                &[_][]const u8{
+                    self.buffer.items[0..self.cursor], 
+                    self.buffer.items[self.cursor + self.gap_len..],
+                }
+            );
+        } else {
+            str = try allocator.dupe(u8, self.buffer.items[0..self.cursor]);
+        }
+        return str;
     }
 
     pub fn format(self: *GapBuffer, writer: *Io.Writer) !void {

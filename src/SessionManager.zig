@@ -6,6 +6,8 @@ const Session = @import("session.zig").Session;
 const Token = @import("token.zig").Token;
 const Tokenizer = @import("token.zig").Tokenizer;
 const Colors = @import("colors.zig");
+const termios_handler = @import("termios_handler.zig").termios_handler;
+const builtin = @import("builtin");
 
 const NUMERIC_COLOR = Colors.NUMERIC_COLOR;
 const SESS_NAME_COLOR = Colors.SESS_NAME_COLOR;
@@ -66,7 +68,9 @@ pub const SessionManager = struct {
         var stdout_writer= File.stdout().writer(&stdout_buffer);
         var writer = &stdout_writer.interface;
 
-        _ = Io.tty.detectConfig(stdin_reader.file);
+        if (builtin.os.tag == .windows) {
+            _ = Io.tty.detectConfig(stdin_reader.file);
+        }
 
         try writer.print("Type {f}\"exit\"\x1b[0m or {f}\"quit\"\x1b[0m to quit\n", 
             .{ALERT_COLOR, ALERT_COLOR});
@@ -79,10 +83,15 @@ pub const SessionManager = struct {
             try writer.flush();
             @memset(stdin_buffer[0..], 0);
 
+            var str: []u8 = undefined;
+            if (builtin.os.tag == .linux) {
+                str = try termios_handler(reader, writer, self.allocator, BUFFERSIZE);
+            } else { 
+                str = try reader.takeDelimiterInclusive('\n');
+            }
 
-            const str = try reader.takeDelimiterInclusive('\n');
-            
             running = try self.process_input(str, writer);
+            self.allocator.free(str);
         }
     }
 
