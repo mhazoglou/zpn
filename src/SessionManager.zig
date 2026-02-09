@@ -6,7 +6,7 @@ const Session = @import("session.zig").Session;
 const Token = @import("token.zig").Token;
 const Tokenizer = @import("token.zig").Tokenizer;
 const Colors = @import("colors.zig");
-const termios_handler = @import("termios_handler.zig").termios_handler;
+const tioh = @import("termios_handler.zig");
 const builtin = @import("builtin");
 
 const NUMERIC_COLOR = Colors.NUMERIC_COLOR;
@@ -83,8 +83,8 @@ pub const SessionManager = struct {
             try writer.flush();
             @memset(stdin_buffer[0..], 0);
 
-            const str = if (builtin.os.tag == .linux) 
-                try termios_handler(reader, writer, self.allocator, BUFFERSIZE)
+            const str = if (tioh.isPosix()) 
+                try tioh.termiosHandler(reader, writer, self.allocator, BUFFERSIZE)
                 else try reader.takeDelimiterInclusive('\n');
 
             running = try self.process_input(str, writer);

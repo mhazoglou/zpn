@@ -3,11 +3,19 @@ const builtin = @import("builtin");
 const GapBuffer = @import("gap_buffer.zig").GapBuffer;
 const Allocator = std.mem.Allocator;
 const Io = std.Io;
-const linux = std.os.linux;
+const posix = std.posix;
 const fs = std.fs;
 const File = fs.File;
 
-pub fn termios_handler(reader: *Io.Reader, writer: *Io.Writer, 
+pub fn isPosix() bool {
+    return switch (builtin.os.tag) {
+        .linux, .macos, .freebsd, .openbsd, .netbsd, .dragonfly, 
+        .ios, .tvos, .visionos, .watchos, .serenity => true,
+        else => false,
+    };
+}
+
+pub fn termiosHandler(reader: *Io.Reader, writer: *Io.Writer, 
     allocator: Allocator, buffersize: usize) ![]u8 {
 
     var gap_buffer = try GapBuffer.initCapacity(allocator, buffersize);
@@ -18,24 +26,25 @@ pub fn termios_handler(reader: *Io.Reader, writer: *Io.Writer,
     defer tty_file.close();
     const tty_fd = tty_file.handle;
 
-    var old_settings: linux.termios = undefined;
-    _ = linux.tcgetattr(tty_fd, &old_settings);
+    var old_settings: posix.termios = undefined;
+    old_settings = try posix.tcgetattr(tty_fd);
 
-    var new_settings: linux.termios = old_settings;
+    var new_settings: posix.termios = old_settings;
     new_settings.lflag.ICANON = false;
     new_settings.lflag.ECHO = false;
     new_settings.cc[6] = 0; //VMIN
     new_settings.cc[5] = 1; //VTIME
     new_settings.lflag.ECHOE = false;
 
-    _ = linux.tcsetattr(tty_fd, linux.TCSA.NOW, &new_settings);
+    _ = try posix.tcsetattr(tty_fd, posix.TCSA.NOW, new_settings);
+
 
 
     blk: while (true) {
         const c: u8 = reader.takeByte() catch continue: blk;
 
         if (c == '\n') {
-            _ = linux.tcsetattr(tty_fd, linux.TCSA.NOW, &old_settings);
+            _ = try posix.tcsetattr(tty_fd, posix.TCSA.NOW, old_settings);
             // try gap_buffer.insertInGap(allocator, c);
             try writer.print("\n", .{});
             const str = try gap_buffer.outputString(allocator);
@@ -86,7 +95,9 @@ pub fn termios_handler(reader: *Io.Reader, writer: *Io.Writer,
                         // '5' => continue: esc '~',
                         // '6' => continue: esc '~',
                         // '~' => break: esc,
-                        else => try writer.print("failed to handle escape [: {c}", .{char}),
+                        else => try writer.print(
+                            "failed to handle escape [: {c}", .{char}
+                        ),
                     }
                     break: esc;
                 },

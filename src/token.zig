@@ -55,6 +55,8 @@ const Case = enum {
     asin,
     cos,
     acos,
+    tan,
+    atan,
     sinh,
     asinh,
     cosh,
@@ -126,6 +128,8 @@ pub fn Tokenizer(str: []const u8) Token {
             .asin => return Token{ .OpUnary = asin },
             .cos => return Token{ .OpUnary = cos },
             .acos => return Token{ .OpUnary = acos },
+            .tan => return Token{ .OpUnary = tan },
+            .atan => return Token{ .OpUnary = atan },
             .sinh => return Token{ .OpUnary = sinh },
             .asinh => return Token{ .OpUnary = asinh },
             .cosh => return Token{ .OpUnary = cosh },
@@ -299,7 +303,7 @@ fn div(num1: f64, num2: f64) f64 { return num1 / num2; }
 fn pow(num1: f64, num2: f64) f64 { return std.math.pow(f64, num1, num2); }
 fn neg(num: f64) f64 { return -num; }
 fn inv(num: f64) f64 { return 1.0 / num; }
-fn abs(num: f64) f64 { if (num >= 0) { return num; } else { return -num; } }
+fn abs(num: f64) f64 { return if (num >= 0) num else -num; }
 fn sq(num: f64) f64 { return num * num; }
 fn sqrt(num: f64) f64 { return std.math.sqrt(num); }
 fn cub(num: f64) f64 { return num * num * num; }
@@ -311,9 +315,9 @@ fn log10(num: f64) f64 { return std.math.log(f64, 10, num); }
 fn sin(num: f64) f64 { return std.math.sin(num); }
 fn asin(num: f64) f64 { return std.math.asin(num); }
 fn cos(num: f64) f64 { return std.math.cos(num); }
-fn acos(num:f64) f64 { return std.math.cos(num); }
+fn acos(num:f64) f64 { return std.math.acos(num); }
 fn tan(num: f64) f64 { return std.math.tan(num); }
-fn atan(num:f64) f64 { return std.math.tan(num); }
+fn atan(num:f64) f64 { return std.math.atan(num); }
 fn sinh(num:f64) f64 { return std.math.sinh(num); }
 fn asinh(num: f64) f64 { return std.math.asinh(num); }
 fn cosh(num: f64) f64 { return std.math.cosh(num); }
