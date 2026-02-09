@@ -37,6 +37,7 @@ pub fn termios_handler(reader: *Io.Reader, writer: *Io.Writer,
         if (c == '\n') {
             _ = linux.tcsetattr(tty_fd, linux.TCSA.NOW, &old_settings);
             // try gap_buffer.insertInGap(allocator, c);
+            try writer.print("\n", .{});
             const str = try gap_buffer.outputString(allocator);
             return str;
         } else if (c == '\x7F') {

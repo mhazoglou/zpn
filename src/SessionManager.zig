@@ -83,15 +83,12 @@ pub const SessionManager = struct {
             try writer.flush();
             @memset(stdin_buffer[0..], 0);
 
-            var str: []u8 = undefined;
-            if (builtin.os.tag == .linux) {
-                str = try termios_handler(reader, writer, self.allocator, BUFFERSIZE);
-            } else { 
-                str = try reader.takeDelimiterInclusive('\n');
-            }
+            const str = if (builtin.os.tag == .linux) 
+                try termios_handler(reader, writer, self.allocator, BUFFERSIZE)
+                else try reader.takeDelimiterInclusive('\n');
 
             running = try self.process_input(str, writer);
-            self.allocator.free(str);
+            if (builtin.os.tag == .linux) self.allocator.free(str);
         }
     }
 

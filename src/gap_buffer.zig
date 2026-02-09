@@ -83,7 +83,7 @@ pub const GapBuffer = struct {
     }
 
     pub fn outputString(self: *GapBuffer, allocator: Allocator) ![]u8 {
-        var str: []u8 = undefined; 
+        var str: []u8 = undefined;
         if (self.cursor + self.gap_len <= self.size - 1) {
             str = try std.mem.concat(allocator, u8, 
                 &[_][]const u8{
