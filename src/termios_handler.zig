@@ -16,7 +16,7 @@ pub fn isPosix() bool {
 }
 
 pub fn termiosHandler(reader: *Io.Reader, writer: *Io.Writer, 
-    allocator: Allocator, buffersize: usize) ![]u8 {
+    allocator: Allocator, buffersize: usize, history: *std.ArrayList(u8)) ![]u8 {
 
     var gap_buffer = try GapBuffer.initCapacity(allocator, buffersize);
     gap_buffer.buffer.appendNTimesAssumeCapacity(' ', buffersize);
@@ -38,8 +38,8 @@ pub fn termiosHandler(reader: *Io.Reader, writer: *Io.Writer,
 
     _ = try posix.tcsetattr(tty_fd, posix.TCSA.NOW, new_settings);
 
-
-
+    const history_len = history.items.len;
+    var history_idx = history_len;
     blk: while (true) {
         const c: u8 = reader.takeByte() catch continue: blk;
 
@@ -78,8 +78,22 @@ pub fn termiosHandler(reader: *Io.Reader, writer: *Io.Writer,
                                 break: esc;
                             }
                         },
-                        'A' => try writer.print("\x1B[A", .{}),
-                        'B' => try writer.print("\x1B[B", .{}),
+                        'A' => {
+                            // Handle up arrow input
+                            //try writer.print("\x1B[A", .{})
+                            if (history_idx > 0) {
+                                history_idx -= 1;
+                            }
+                            try writer.print("{c}", .{history.items[history_idx]});
+                        },
+                        'B' => {
+                            // Handle down arrow input
+                            //try writer.print("\x1B[B", .{})
+                            if (history_idx < history_len - 1) {
+                                history_idx += 1;
+                            }
+                            try writer.print("{c}", .{history.items[history_idx]});
+                        },
                         'C' => {
                             // Handle right arrow input
                             gap_buffer.moveCursorRight();
@@ -90,8 +104,14 @@ pub fn termiosHandler(reader: *Io.Reader, writer: *Io.Writer,
                             gap_buffer.moveCursorLeft();
                             try writer.print("{f}", .{&gap_buffer});
                         },
-                        'H' => try writer.print("\x1B[H", .{}),
-                        'F' => try writer.print("\x1B[F", .{}),
+                        'H' => {
+                            gap_buffer.moveCursorToStart();
+                            try writer.print("{f}", .{&gap_buffer});
+                        },
+                        'F' => {
+                            gap_buffer.moveCursorToEnd();
+                            try writer.print("{f}", .{&gap_buffer});
+                        },
                         // '5' => continue: esc '~',
                         // '6' => continue: esc '~',
                         // '~' => break: esc,

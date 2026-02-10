@@ -253,7 +253,7 @@ pub const Session = struct {
             .{INDEX_COLOR, NUMERIC_COLOR});
         for (self.stack.items, 0..) |n, i| {
             if ((@abs(n) > 1e6) or (@abs(n) < 1e-3) and (n != 0)) {
-                try writer.print("{f}{}\t    {f}{}\n", 
+                try writer.print("{f}{}\t    {f}{e}\n", 
                     .{INDEX_COLOR, i, NUMERIC_COLOR, n});
             } else {
                 try writer.print("{f}{}\t    {f}{d}\n", 

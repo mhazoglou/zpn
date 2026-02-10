@@ -84,11 +84,11 @@ pub const SessionManager = struct {
             @memset(stdin_buffer[0..], 0);
 
             const str = if (tioh.isPosix()) 
-                try tioh.termiosHandler(reader, writer, self.allocator, BUFFERSIZE)
+                try tioh.termiosHandler(reader, writer, self.allocator, BUFFERSIZE, &sess.history)
                 else try reader.takeDelimiterInclusive('\n');
 
             running = try self.process_input(str, writer);
-            if (builtin.os.tag == .linux) self.allocator.free(str);
+            if (tioh.isPosix()) self.allocator.free(str);
         }
     }
 

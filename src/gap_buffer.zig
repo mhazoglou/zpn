@@ -58,6 +58,26 @@ pub const GapBuffer = struct {
         self.cursor += 1;
     }
 
+    pub fn moveCursorToStart(self: *GapBuffer) void {
+        if (self.cursor == 0) {
+            return;
+        }
+        for (0..self.cursor) |i| {
+            self.buffer.items[self.gap_len + i] = self.buffer.items[i];
+        }
+        self.cursor = 0;
+    }
+
+    pub fn moveCursorToEnd(self: *GapBuffer) void {
+        if (self.cursor + self.gap_len >= self.size) {
+            return;
+        }
+        for (self.cursor + self.gap_len..self.size) |i| {
+            self.buffer.items[i - self.gap_len] = self.buffer.items[i];
+        }
+        self.cursor = self.size - self.gap_len;
+    }
+
     pub fn insertInGap(self: *GapBuffer, allocator: Allocator, char: u8) !void {
         self.buffer.items[self.cursor] = char;
         if (self.gap_len <= 1) {
