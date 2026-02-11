@@ -88,7 +88,7 @@ pub const SessionManager = struct {
                 else try reader.takeDelimiterInclusive('\n');
 
             running = try self.process_input(writer, str);
-            if (tioh.isPosix()) self.allocator.free(str);
+            if (comptime tioh.isPosix()) self.allocator.free(str);
         }
     }
 
