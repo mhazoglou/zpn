@@ -38,8 +38,16 @@ pub fn termiosHandler(reader: *Io.Reader, writer: *Io.Writer,
 
     _ = try posix.tcsetattr(tty_fd, posix.TCSA.NOW, new_settings);
 
-    const history_len = history.items.len;
-    var history_idx = history_len;
+    var iter = std.mem.splitScalar(u8, history.items, '\n');
+    var cmds = std.ArrayList([]const u8).empty;
+    defer cmds.deinit(allocator);
+
+    while (iter.peek() != null) {
+        try cmds.append(allocator, iter.next().?);
+    }
+    const history_len = cmds.items.len;
+    var history_idx = history_len - 1;
+
     blk: while (true) {
         const c: u8 = reader.takeByte() catch continue: blk;
 
@@ -49,6 +57,8 @@ pub fn termiosHandler(reader: *Io.Reader, writer: *Io.Writer,
             try writer.print("\n", .{});
             const str = try gap_buffer.outputString(allocator);
             return str;
+        } else if (c == '\t') {
+            continue: blk;
         } else if (c == '\x7F') {
             gap_buffer.deleteLeft();
         } else if (c == '\x1B') {
@@ -60,13 +70,17 @@ pub fn termiosHandler(reader: *Io.Reader, writer: *Io.Writer,
                 },
                 error.ReadFailed => return err,
             };
+
             esc: switch (char) {
                 '[' => {
+
                     char = reader.takeByte() catch |err| switch (err) {
                         error.EndOfStream => break: esc,
                         error.ReadFailed => return err,
                     };
+
                     switch (char) {
+
                         '3' => {
                             char = reader.takeByte() catch |err| switch (err) {
                                 error.EndOfStream => break: esc,
@@ -78,36 +92,42 @@ pub fn termiosHandler(reader: *Io.Reader, writer: *Io.Writer,
                                 break: esc;
                             }
                         },
+
                         'A' => {
                             // Handle up arrow input
-                            //try writer.print("\x1B[A", .{})
                             if (history_idx > 0) {
                                 history_idx -= 1;
                             }
-                            try writer.print("{c}", .{history.items[history_idx]});
+                            try gap_buffer.replaceAll(allocator, cmds.items[history_idx]);
+                            try writer.print("{f}", .{&gap_buffer});
                         },
+
                         'B' => {
                             // Handle down arrow input
-                            //try writer.print("\x1B[B", .{})
                             if (history_idx < history_len - 1) {
                                 history_idx += 1;
                             }
-                            try writer.print("{c}", .{history.items[history_idx]});
+                            try gap_buffer.replaceAll(allocator, cmds.items[history_idx]); 
+                            try writer.print("{f}", .{&gap_buffer});
                         },
+
                         'C' => {
                             // Handle right arrow input
                             gap_buffer.moveCursorRight();
                             try writer.print("{f}", .{&gap_buffer});
                         },
+
                         'D' => {
                             // Handle left arrow input
                             gap_buffer.moveCursorLeft();
                             try writer.print("{f}", .{&gap_buffer});
                         },
+
                         'H' => {
                             gap_buffer.moveCursorToStart();
                             try writer.print("{f}", .{&gap_buffer});
                         },
+
                         'F' => {
                             gap_buffer.moveCursorToEnd();
                             try writer.print("{f}", .{&gap_buffer});
@@ -119,12 +139,16 @@ pub fn termiosHandler(reader: *Io.Reader, writer: *Io.Writer,
                             "failed to handle escape [: {c}", .{char}
                         ),
                     }
+
                     break: esc;
+
                 },
+
                 else => {
                     try writer.print("{c}", .{char});
                     break: esc;
                 },
+
             }
         } else {
             try gap_buffer.insertInGap(allocator, c);

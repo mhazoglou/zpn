@@ -87,12 +87,12 @@ pub const SessionManager = struct {
                 try tioh.termiosHandler(reader, writer, self.allocator, BUFFERSIZE, &sess.history)
                 else try reader.takeDelimiterInclusive('\n');
 
-            running = try self.process_input(str, writer);
+            running = try self.process_input(writer, str);
             if (tioh.isPosix()) self.allocator.free(str);
         }
     }
 
-    fn process_input(self: *SessionManager, cmd_input: []u8, writer: *Io.Writer) !bool {
+    fn process_input(self: *SessionManager, writer: *Io.Writer, cmd_input: []u8) !bool {
         var running = true;
         var iter = std.mem.splitAny(u8, cmd_input, " \t\r\n");
         const sess = self.map.get(self.current_session).?;
@@ -101,7 +101,7 @@ pub const SessionManager = struct {
             if (!std.mem.eql(u8, tk[0..], "")) {
                 try sess.append_to_history(tk[0..]);
                 const token = Tokenizer(tk[0..]);
-                running = self.match_token(token, writer);
+                running = self.match_token(writer, token);
                 if (!running) {
                     break;
                 }
@@ -111,31 +111,31 @@ pub const SessionManager = struct {
         return running;
     }
 
-    fn match_token(self: *SessionManager, token: Token, writer: *Io.Writer) bool {
+    fn match_token(self: *SessionManager, writer: *Io.Writer, token: Token) bool {
         var sess = self.map.get(self.current_session).?;
         var running = true;
         switch (token) {
             .Number => |num| sess.append_to_stack(num) catch unreachable,
-            .OpBinary => |func| sess.op_binary(func, writer) catch unreachable,
-            .Elementwise => |group| sess.elementwise(group[0], group[1], writer) catch unreachable,
-            .Reduce => |func| sess.reduce(func, writer) catch unreachable,
-            .OpUnary => |func| sess.op_unary(func, writer) catch unreachable,
-            .Map => |func| sess.map(func, writer) catch unreachable,
+            .OpBinary => |func| sess.op_binary(writer, func) catch unreachable,
+            .Elementwise => |group| sess.elementwise(writer, group[0], group[1]) catch unreachable,
+            .Reduce => |func| sess.reduce(writer, func) catch unreachable,
+            .OpUnary => |func| sess.op_unary(writer, func) catch unreachable,
+            .Map => |func| sess.map(writer, func) catch unreachable,
             .Swap => sess.swap(writer) catch unreachable,
             .CyclicPermutation => |num| sess.cyclic_permutation(num) catch unreachable,
-            .Get => |num| sess.get(num, writer) catch unreachable,
-            .Insert => |nums| sess.insert(nums[0], nums[1], writer) catch unreachable,
+            .Get => |num| sess.get(writer, num) catch unreachable,
+            .Insert => |nums| sess.insert(writer, nums[0], nums[1]) catch unreachable,
             .ClearStack => sess.clear_stack() catch unreachable,
             .Del => |num| sess.del(num) catch unreachable,
             .PrintHistory => sess.print_history(writer) catch unreachable,
             .Quit => running = false,
-            .Copy => |num| sess.copy(num, writer) catch unreachable,
-            .NewSession => |name| self.add_new_session(name) catch unreachable, 
-            .ChangeSession => |name| self.change_current_session(name, writer) catch unreachable, 
-            .RemoveSession => |name| self.remove_session(name, writer) catch unreachable,
+            .Copy => |num| sess.copy(writer, num) catch unreachable,
+            .NewSession => |name| self.add_new_session(writer, name) catch unreachable, 
+            .ChangeSession => |name| self.change_current_session(writer, name) catch unreachable, 
+            .RemoveSession => |name| self.remove_session(writer, name) catch unreachable,
             .PrintSessions => self.print_session_names(writer) catch unreachable,
-            .Undo => |num| sess.undo(num, writer) catch unreachable,
-            .Redo => |num| sess.redo(num, writer) catch unreachable,
+            .Undo => |num| sess.undo(writer, num) catch unreachable,
+            .Redo => |num| sess.redo(writer, num) catch unreachable,
             .ResetSession => sess.reset(),
             .Invalid => writer.print("{f}An invalid token was entered.\x1b[0m\n\n", 
                 .{ALERT_COLOR}) catch unreachable,
@@ -144,13 +144,20 @@ pub const SessionManager = struct {
         return running;
     }
 
-    fn add_new_session(self: *SessionManager, name: []const u8) !void {
+    fn add_new_session(self: *SessionManager, writer: *Io.Writer, 
+        name: []const u8
+    ) !void {
+        if (self.map.contains(name)) {
+            try writer.print("{f}Session name {s} already exists.\n", 
+                .{ALERT_COLOR, name});
+            return;
+        }
         const sess_name, const new_sess = try self.make_new_session(name);
         
         try self.map.put(sess_name, new_sess);
     }
 
-    fn change_current_session(self: *SessionManager, name: []const u8, writer: *Io.Writer) !void {
+        fn change_current_session(self: *SessionManager, writer: *Io.Writer, name: []const u8) !void {
         const opt_sess_key = self.map.getKey(name);
         if (opt_sess_key) |key| {
             self.current_session = key;
@@ -171,7 +178,7 @@ pub const SessionManager = struct {
         try writer.print("\n", .{});
     }
 
-    fn remove_session(self: *SessionManager, name: []const u8, writer: *Io.Writer) !void {
+    fn remove_session(self: *SessionManager, writer: *Io.Writer, name: []const u8) !void {
         if (std.mem.eql(u8, name, "default")) {
             try writer.print("{f}The default session cannot be deleted.\n\n", .{ALERT_COLOR});
         } else if (std.mem.eql(u8, name, self.current_session)) {

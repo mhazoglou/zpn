@@ -117,6 +117,18 @@ pub const GapBuffer = struct {
         return str;
     }
 
+    pub fn replaceAll(self: *GapBuffer, allocator: Allocator, string: []const u8) !void {
+        if (string.len > self.size) {
+            try self.ensureUnusedCapacity(allocator, string.len - self.size);
+        }
+        for (0..string.len) |i| {
+            self.buffer.items[i] = string[i];
+        }
+        self.cursor = string.len;
+        self.gap_len = self.size - string.len;
+        //self.moveCursorToEnd();
+    }
+
     pub fn format(self: *GapBuffer, writer: *Io.Writer) !void {
         try writer.print("\x1B[0G\x1B[2K", .{});
         try writer.print("{s}", .{self.buffer.items[0..self.cursor]});

@@ -67,18 +67,21 @@ pub const Session = struct {
         try self.history.appendSlice(self.allocator, "\n");
     }
     
-    pub fn op_binary(self: *Session, bin_fn: *const fn(f64, f64) f64, writer: *Io.Writer) !void {
+    pub fn op_binary(self: *Session, writer: *Io.Writer, bin_fn: *const fn(f64, f64) f64) !void {
         if (self.stack.items.len > 1) {
             const y = self.pop_from_stack();
             const x = self.pop_from_stack();
             try self.append_to_stack(bin_fn(x, y));
         } else {
             try writer.print("{f}You need at least two numbers in ", .{ALERT_COLOR});
+
+
+
             try writer.print("the stack to perform binary operations.\n\n", .{});
         }
     }
 
-    pub fn reduce(self: *Session, bin_fn: *const fn(f64, f64) f64, writer: *Io.Writer) !void {
+    pub fn reduce(self: *Session, writer: *Io.Writer, bin_fn: *const fn(f64, f64) f64) !void {
         var acc = self.pop_from_stack();
         while (self.stack.items.len > 0) {
             const x = self.pop_from_stack();
@@ -93,7 +96,7 @@ pub const Session = struct {
         }
     }
 
-    pub fn elementwise(self: *Session, num: f64, bin_fn: *const fn(f64,f64) f64, writer: *Io.Writer) !void {
+    pub fn elementwise(self: *Session, writer: *Io.Writer, num: f64, bin_fn: *const fn(f64,f64) f64) !void {
         if (self.stack.items.len >= 1) {
             for (self.stack.items) |*el_ptr| {
                 el_ptr.* = bin_fn(el_ptr.*, num);
@@ -106,7 +109,7 @@ pub const Session = struct {
 
     }
     
-    pub fn op_unary(self: *Session, un_fn: *const fn(f64) f64, writer: *Io.Writer) !void {
+    pub fn op_unary(self: *Session, writer: *Io.Writer, un_fn: *const fn(f64) f64) !void {
         if (self.stack.items.len >= 1) {
             const x = self.pop_from_stack();
             try self.append_to_stack(un_fn(x));
@@ -116,7 +119,7 @@ pub const Session = struct {
         }
     }
 
-    pub fn map(self: *Session, un_fn: *const fn(num: f64) f64, writer: *Io.Writer) !void {
+    pub fn map(self: *Session, writer: *Io.Writer, un_fn: *const fn(num: f64) f64) !void {
         if (self.stack.items.len >= 1) {
             for (self.stack.items) |*el_ptr| {
                 el_ptr.* = un_fn(el_ptr.*);
@@ -174,7 +177,7 @@ pub const Session = struct {
         try self.update_states();
     }
 
-    pub fn copy(self: *Session, num: u32, writer: *Io.Writer) !void {
+    pub fn copy(self: *Session, writer: *Io.Writer, num: u32) !void {
         if (self.stack.getLastOrNull()) |last| {
             try self.stack.appendNTimes(self.allocator, last, num);
         } else {
@@ -183,7 +186,7 @@ pub const Session = struct {
         try self.update_states();
     }
 
-    pub fn get(self: *Session, num: usize, writer: *Io.Writer) !void {
+    pub fn get(self: *Session, writer: *Io.Writer, num: usize) !void {
         if (num < self.stack.items.len) {
             const item = self.stack.orderedRemove(num);
             try self.append_to_stack(item);
@@ -192,7 +195,7 @@ pub const Session = struct {
         }
     }
 
-    pub fn insert(self: *Session, num: usize, val: f64, writer: *Io.Writer) !void {
+    pub fn insert(self: *Session, writer: *Io.Writer, num: usize, val: f64) !void {
         if (self.stack.items.len >= num) {
             try self.stack.insert(self.allocator, num, val);
         } else {
@@ -201,7 +204,7 @@ pub const Session = struct {
         try self.update_states();
     }
 
-    pub fn undo(self: *Session, num: u32, writer: *Io.Writer) !void {
+    pub fn undo(self: *Session, writer: *Io.Writer, num: u32) !void {
         if (self.states.items.len >= num) {
             for (0..num) |_| {
                 const state = self.states.pop().?;
@@ -216,7 +219,7 @@ pub const Session = struct {
         }
     }
 
-    pub fn redo(self: *Session, num: u32, writer: *Io.Writer) !void {
+    pub fn redo(self: *Session, writer: *Io.Writer, num: u32) !void {
          if (self.undone_states.items.len >= num) {
             for (0..num) |_| {
                 const state = self.undone_states.pop().?;
