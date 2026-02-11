@@ -53,7 +53,6 @@ pub fn termiosHandler(reader: *Io.Reader, writer: *Io.Writer,
 
         if (c == '\n') {
             _ = try posix.tcsetattr(tty_fd, posix.TCSA.NOW, old_settings);
-            // try gap_buffer.insertInGap(allocator, c);
             try writer.print("\n", .{});
             const str = try gap_buffer.outputString(allocator);
             return str;

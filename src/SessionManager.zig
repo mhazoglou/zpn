@@ -83,7 +83,7 @@ pub const SessionManager = struct {
             try writer.flush();
             @memset(stdin_buffer[0..], 0);
 
-            const str = if (tioh.isPosix()) 
+            const str = if (comptime tioh.isPosix()) 
                 try tioh.termiosHandler(reader, writer, self.allocator, BUFFERSIZE, &sess.history)
                 else try reader.takeDelimiterInclusive('\n');
 
