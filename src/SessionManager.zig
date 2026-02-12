@@ -13,6 +13,7 @@ const NUMERIC_COLOR = Colors.NUMERIC_COLOR;
 const SESS_NAME_COLOR = Colors.SESS_NAME_COLOR;
 const TEXT_COLOR = Colors.TEXT_COLOR;
 const ALERT_COLOR = Colors.ALERT_COLOR;
+const RESET = Colors.RESET;
 
 // More than enough to kill anything that moves
 const BUFFERSIZE = 4096;
@@ -25,10 +26,9 @@ pub const SessionManager = struct {
     pub fn init(allocator: Allocator) !SessionManager {
     	var self: SessionManager = .{
             .map = std.StringHashMap(*Session).init(allocator),
-            .current_session = "default", // allocator.alloc(u8, length)
+            .current_session = "default", 
             .allocator = allocator,
     	};
-        // const default = try allocator.create(Session);
         const name, const default = try self.make_new_session("default");
         
         
@@ -49,7 +49,10 @@ pub const SessionManager = struct {
     // This method is to allocate memory for a new session and it's name
     // it returns the value to make their lifetimes persist longer than the 
     // scope they would be defined in
-    fn make_new_session(self: *SessionManager, name: []const u8) !struct {[]const u8, *Session} {
+    fn make_new_session(
+        self: *SessionManager, 
+        name: []const u8
+    ) !struct {[]const u8, *Session} {
         const sess = try self.allocator.create(Session);
         const sess_name = try self.allocator.dupe(u8, name);
 
@@ -72,8 +75,8 @@ pub const SessionManager = struct {
             _ = Io.tty.detectConfig(stdin_reader.file);
         }
 
-        try writer.print("Type {f}\"exit\"\x1b[0m or {f}\"quit\"\x1b[0m to quit\n", 
-            .{ALERT_COLOR, ALERT_COLOR});
+        try writer.print("Hit {f}\"esc\"{s} or type {f}\"exit\"{s} or {f}\"quit\"{s} to quit\n", 
+            .{ALERT_COLOR, RESET, ALERT_COLOR, RESET, ALERT_COLOR, RESET});
         while (running) {
             const sess = self.map.get(self.current_session).?;
             try writer.print("{f}Current session: {f}{s}\x1b[0m\n", 
@@ -83,12 +86,14 @@ pub const SessionManager = struct {
             try writer.flush();
             @memset(stdin_buffer[0..], 0);
 
-            const str = if (comptime tioh.isPosix()) 
-                try tioh.termiosHandler(reader, writer, self.allocator, BUFFERSIZE, &sess.history)
+            const str = if (tioh.is_posix) 
+                try tioh.termiosHandler(reader, writer, self.allocator, 
+                    BUFFERSIZE, &sess.history
+                )
                 else try reader.takeDelimiterInclusive('\n');
 
             running = try self.process_input(writer, str);
-            if (comptime tioh.isPosix()) self.allocator.free(str);
+            if (tioh.is_posix) self.allocator.free(str);
         }
     }
 

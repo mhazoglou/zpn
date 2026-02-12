@@ -25,3 +25,4 @@ pub const SESS_NAME_COLOR = Color.init(166, 227, 161);
 pub const TEXT_COLOR = Color.init(249, 226, 175);
 pub const ALERT_COLOR = Color.init(243, 139, 168);
 pub const INDEX_COLOR = Color.init(203, 166, 247);
+pub const RESET = "\x1b[0m";
