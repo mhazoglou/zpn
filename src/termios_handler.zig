@@ -7,22 +7,10 @@ const posix = std.posix;
 const fs = std.fs;
 const File = fs.File;
 
-const TIMEOUT = 10_000_000; // 10 ms is good
-
 pub const is_posix: bool = switch (builtin.os.tag) {
     .windows, .uefi, .wasi => false,
     else => true,
 };
-
-
-fn timedRead(reader: *Io.Reader, start_time: std.time.Instant) !u8 {
-    const now = std.time.Instant.now() catch unreachable;
-    while (now.since(start_time) < TIMEOUT) {
-        return reader.takeByte();
-    } else {
-        return error.EndOfStream; 
-    }
-} 
 
 pub fn termiosHandler(reader: *Io.Reader, writer: *Io.Writer, 
     allocator: Allocator, buffersize: usize, history: *std.ArrayList(u8)) ![]u8 {
@@ -41,8 +29,8 @@ pub fn termiosHandler(reader: *Io.Reader, writer: *Io.Writer,
     var new_settings: posix.termios = old_settings;
     new_settings.lflag.ICANON = false;
     new_settings.lflag.ECHO = false;
-    new_settings.cc[6] = 0; //VMIN
-    // new_settings.cc[5] = 1; //VTIME
+    new_settings.cc[6] = 1; //VMIN
+    new_settings.cc[5] = 0; //VTIME
     new_settings.lflag.ECHOE = false;
 
     _ = try posix.tcsetattr(tty_fd, posix.TCSA.NOW, new_settings);
@@ -59,7 +47,6 @@ pub fn termiosHandler(reader: *Io.Reader, writer: *Io.Writer,
 
     blk: while (true) {
         const c: u8 = reader.takeByte() catch continue: blk;
-        const start = std.time.Instant.now() catch unreachable;
 
         if (c == '\n') {
             _ = try posix.tcsetattr(tty_fd, posix.TCSA.NOW, old_settings);
@@ -71,28 +58,27 @@ pub fn termiosHandler(reader: *Io.Reader, writer: *Io.Writer,
         } else if (c == '\x7F') {
             gap_buffer.deleteLeft();
         } else if (c == '\x1B') {
-            var char: u8 = timedRead(reader, start) catch |err| switch (err) {
+
+            // switch to non-blocking to handle escape sequences
+            new_settings.cc[6] = 0; //VMIN
+            _ = try posix.tcsetattr(tty_fd, posix.TCSA.NOW, new_settings);
+
+            var char: u8 = reader.takeByte() catch |err| switch (err) {
                 error.EndOfStream => {
-                    // try writer.print("Escape button was pressed only.", .{});
-                    // try writer.flush();
-                    // continue: blk;
                     _ = try posix.tcsetattr(tty_fd, posix.TCSA.NOW, old_settings);
                     var quit_cmd = [_]u8{'q', 'u', 'i', 't', '\n'};
                     try gap_buffer.replaceAll(allocator, quit_cmd[0..quit_cmd.len]);
                     try writer.print("{f}", .{&gap_buffer});
                     const str = try gap_buffer.outputString(allocator);
                     return str;
-                    // return quit_cmd[0..quit_cmd.len];
                 },
                 error.ReadFailed => return err,
             };
-            
-            const new_start = std.time.Instant.now() catch unreachable;
 
             esc: switch (char) {
                 '[' => {
 
-                    char = timedRead(reader, new_start) catch |err| switch (err) {
+                    char = reader.takeByte() catch |err| switch (err) {
                         error.EndOfStream => break: esc,
                         error.ReadFailed => return err,
                     };
@@ -100,7 +86,7 @@ pub fn termiosHandler(reader: *Io.Reader, writer: *Io.Writer,
                     switch (char) {
 
                         '3' => {
-                            char = timedRead(reader, new_start) catch |err| switch (err) {
+                            char = reader.takeByte() catch |err| switch (err) {
                                 error.EndOfStream => break: esc,
                                 error.ReadFailed => return err,
                             };
@@ -168,11 +154,13 @@ pub fn termiosHandler(reader: *Io.Reader, writer: *Io.Writer,
                     try writer.print("{c}", .{char});
                     break: esc;
                 },
-
             }
+
+            new_settings.cc[6] = 0; //VMIN
+            _ = try posix.tcsetattr(tty_fd, posix.TCSA.NOW, new_settings);
+
         } else {
             try gap_buffer.insertInGap(allocator, c);
-            // try writer.print("{c}", .{c});
         }
         try writer.print("{f}", .{&gap_buffer});
         try writer.flush();
