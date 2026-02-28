@@ -91,6 +91,7 @@ pub const Session = struct {
                 break;
             }
         } else {
+            try self.append_to_stack(acc);
             try writer.print("{f}You need at least two numbers in ", .{ALERT_COLOR});
             try writer.print("the stack to perform binary operations.\n\n", .{});
         }
